@@ -1,59 +1,117 @@
-'use client';
+'use client'
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Lock, Trash2, Loader2 } from 'lucide-react';
-import { startTransition, useActionState } from 'react';
-import { updatePassword, deleteAccount } from '@/app/(login)/actions';
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Lock, Trash2, Loader2 } from 'lucide-react'
+import { startTransition, useActionState } from 'react'
+import { deleteAccount, requestPasswordReset } from '@/app/(login)/actions'
+import React from 'react' // Added import for React
 
 type ActionState = {
-  error?: string;
-  success?: string;
-};
+  error?: string
+  success?: string
+}
 
 export default function SecurityPage() {
-  const [passwordState, passwordAction, isPasswordPending] = useActionState<
+  // Remove or comment out the password update state
+  // const [passwordState, passwordAction, isPasswordPending] = useActionState<
+  //   ActionState,
+  //   FormData
+  // >(updatePassword, { error: '', success: '' })
+
+  // Add state for password reset
+  const [resetState, resetAction, isResetPending] = useActionState<
     ActionState,
     FormData
-  >(updatePassword, { error: '', success: '' });
+  >(requestPasswordReset, { error: '', success: '' })
 
   const [deleteState, deleteAction, isDeletePending] = useActionState<
     ActionState,
     FormData
-  >(deleteAccount, { error: '', success: '' });
+  >(deleteAccount, { error: '', success: '' })
 
   const handlePasswordSubmit = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
-    event.preventDefault();
-    // If you call the Server Action directly, it will automatically
-    // reset the form. We don't want that here, because we want to keep the
-    // client-side values in the inputs. So instead, we use an event handler
-    // which calls the action. You must wrap direct calls with startTranstion.
-    // When you use the `action` prop it automatically handles that for you.
-    // Another option here is to persist the values to local storage. I might
-    // explore alternative options.
+    event.preventDefault()
+    // Commenting out the existing password update handler
+    /*
     startTransition(() => {
-      passwordAction(new FormData(event.currentTarget));
-    });
-  };
+      passwordAction(new FormData(event.currentTarget))
+    })
+    */
+  }
+
+  const handleResetSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    startTransition(() => {
+      resetAction(new FormData(event.currentTarget))
+    })
+  }
 
   const handleDeleteSubmit = async (
     event: React.FormEvent<HTMLFormElement>
   ) => {
-    event.preventDefault();
+    event.preventDefault()
     startTransition(() => {
-      deleteAction(new FormData(event.currentTarget));
-    });
-  };
+      deleteAction(new FormData(event.currentTarget))
+    })
+  }
 
   return (
     <section className="flex-1 p-4 lg:p-8">
       <h1 className="text-lg lg:text-2xl font-medium bold text-gray-900 mb-6">
         Security Settings
       </h1>
+
+      {/* Password Reset Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Reset Password</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleResetSubmit}>
+            <div>
+              <Label htmlFor="reset-password"> Email Address</Label>
+              <p>Enter the email you signed up with</p>
+              <Input
+                id="reset-password"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                minLength={3}
+                maxLength={255}
+              />
+            </div>
+            {resetState.error && (
+              <p className="text-red-500 text-sm">{resetState.error}</p>
+            )}
+            {resetState.success && (
+              <p className="text-green-500 text-sm">{resetState.success}</p>
+            )}
+            <Button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={isResetPending}
+            >
+              {isResetPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Send Reset Link'
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Commented Out Password Update Section */}
+      {/*
       <Card className="mb-8">
         <CardHeader>
           <CardTitle>Password</CardTitle>
@@ -121,14 +179,16 @@ export default function SecurityPage() {
           </form>
         </CardContent>
       </Card>
+      */}
 
+      {/* Delete Account Section */}
       <Card>
         <CardHeader>
           <CardTitle>Delete Account</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-gray-500 mb-4">
-            Account deletion is non-reversable. Please proceed with caution.
+            Account deletion is non-reversible. Please proceed with caution.
           </p>
           <form onSubmit={handleDeleteSubmit} className="space-y-4">
             <div>
@@ -167,5 +227,5 @@ export default function SecurityPage() {
         </CardContent>
       </Card>
     </section>
-  );
+  )
 }

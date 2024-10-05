@@ -1,24 +1,24 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { useActionState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { CircleIcon, Loader2 } from 'lucide-react';
-import { signIn, signUp } from './actions';
-import { ActionState } from '@/lib/auth/middleware';
+import Link from 'next/link'
+import { useActionState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { CircleIcon, Loader2 } from 'lucide-react'
+import { signIn, signUp } from './actions'
+import { ActionState } from '@/lib/auth/middleware'
 
 export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect');
-  const priceId = searchParams.get('priceId');
-  const inviteId = searchParams.get('inviteId');
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect')
+  const priceId = searchParams.get('priceId')
+  const inviteId = searchParams.get('inviteId')
   const [state, formAction, pending] = useActionState<ActionState, FormData>(
     mode === 'signin' ? signIn : signUp,
     { error: '' }
-  );
+  )
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
@@ -94,10 +94,10 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
               disabled={pending}
             >
               {pending ? (
-                <>
+                <div>
                   <Loader2 className="animate-spin mr-2 h-4 w-4" />
                   Loading...
-                </>
+                </div>
               ) : mode === 'signin' ? (
                 'Sign in'
               ) : (
@@ -136,5 +136,5 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
         </div>
       </div>
     </div>
-  );
+  )
 }
