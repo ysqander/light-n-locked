@@ -1,3 +1,5 @@
+'use server'
+
 import { sha256 } from 'oslo/crypto'
 import { z } from 'zod'
 import { validatedAction } from '@/lib/auth/middleware'
@@ -12,17 +14,21 @@ import { cookies } from 'next/headers'
 import { validateRequest } from '@/lib/auth/lucia'
 
 export const resetPassword = validatedAction(
-  z
-    .object({
-      password: z.string().min(8).max(100),
-      confirmPassword: z.string().min(8).max(100),
-      token: z.string(), // Include token in the validation schema
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: "Passwords don't match",
-      path: ['confirmPassword'],
-    }),
+  z.object({
+    password: z.string().min(8).max(100),
+    confirmPassword: z.string().min(8).max(100),
+    token: z.string(), // Include token in the validation schema
+  }),
+  // .refine((data) => data.password === data.confirmPassword, {
+  //   message: "Passwords don't match",
+  //   path: ['confirmPassword'],
+  // }),
   async (data) => {
+    // Check if passwords match
+    if (data.password !== data.confirmPassword) {
+      return { error: "Passwords don't match" }
+    }
+
     const { user } = await validateRequest()
     if (!user) {
       return { error: 'Unauthorized' }

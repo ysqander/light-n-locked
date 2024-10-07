@@ -36,26 +36,30 @@ import { encodeHex } from 'oslo/encoding'
 import { generateIdFromEntropySize } from 'lucia'
 import { isWithinExpirationDate } from '@/lib/utils/dateUtils' // Ensure this import is present
 import { Resend } from 'resend'
+import { createUserAndTeam } from '@/lib/db/data-access/users'
+import { logActivity } from '@/lib/db/data-access/activity'
+import { getUserWithTeamByEmail } from '@/lib/db/data-access/users'
+import InvitationEmail from '@/components/InvitationEmail'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-async function logActivity(
-  teamId: number | null | undefined,
-  userId: number,
-  type: ActivityType,
-  ipAddress?: string
-) {
-  if (teamId === null || teamId === undefined) {
-    return
-  }
-  const newActivity: NewActivityLog = {
-    teamId,
-    userId,
-    action: type,
-    ipAddress: ipAddress || '',
-  }
-  await db.insert(activityLogs).values(newActivity)
-}
+// async function logActivity(
+//   teamId: number | null | undefined,
+//   userId: number,
+//   type: ActivityType,
+//   ipAddress?: string
+// ) {
+//   if (teamId === null || teamId === undefined) {
+//     return
+//   }
+//   const newActivity: NewActivityLog = {
+//     teamId,
+//     userId,
+//     action: type,
+//     ipAddress: ipAddress || '',
+//   }
+//   await db.insert(activityLogs).values(newActivity)
+// }
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
@@ -65,19 +69,10 @@ const signInSchema = z.object({
 export const signIn = validatedAction(signInSchema, async (data, formData) => {
   const { email, password } = data
 
-  const userWithTeam = await db
-    .select({
-      user: users,
-      team: teams,
-    })
-    .from(users)
-    .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
-    .leftJoin(teams, eq(teamMembers.teamId, teams.id))
-    .where(eq(users.email, email))
-    .limit(1)
+  const userWithTeam = await getUserWithTeamByEmail(email)
 
   if (userWithTeam.length === 0) {
-    return { error: 'Invalid email or password. Please try again.' }
+    return { error: 'Invalid email or password. Please try again or sign up.' }
   }
 
   const { user: foundUser, team: foundTeam } = userWithTeam[0]
@@ -97,7 +92,9 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     })
 
     if (!isPasswordValid) {
-      return { error: 'Invalid email or password. Please try again.' }
+      return {
+        error: 'Invalid email or password. Please try again or sign up.',
+      }
     } else {
       await Promise.all([
         //setSession(foundUser),
@@ -115,19 +112,18 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
       } catch (error) {
         return { error: 'Failed to create session. Please try signing in.' }
       }
+      redirect('/dashboard')
     }
-  }
-
-  // login with github
-  if (!foundUser.passwordHash && foundUser.githubId) {
-    // TODO
-    console.log('implment login with github')
   }
 
   const redirectTo = formData.get('redirect') as string | null
   if (redirectTo === 'checkout') {
     const priceId = formData.get('priceId') as string
-    return createCheckoutSession({ team: foundTeam, priceId })
+    const checkoutUrl = await createCheckoutSession({
+      team: foundTeam,
+      priceId,
+    })
+    redirect(checkoutUrl)
   }
 
   redirect('/dashboard')
@@ -152,7 +148,6 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     return { error: 'Failed to create user. Please try again.' }
   }
 
-  //const passwordHash = await hashPassword(password);
   const passwordHash = await hashPasswordArgon2(password)
 
   const newUser: NewUser = {
@@ -161,100 +156,38 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     role: 'owner', // Default role, will be overridden if there's an invitation
   }
 
-  const [createdUser] = await db.insert(users).values(newUser).returning()
-
-  if (!createdUser) {
-    return { error: 'Failed to create user. Please try again.' }
-  }
-
-  let teamId: number
-  let userRole: string
-  let createdTeam: typeof teams.$inferSelect | null = null
-
-  if (inviteId) {
-    // Check if there's a valid invitation
-    const [invitation] = await db
-      .select()
-      .from(invitations)
-      .where(
-        and(
-          eq(invitations.id, parseInt(inviteId)),
-          eq(invitations.email, email),
-          eq(invitations.status, 'pending')
-        )
-      )
-      .limit(1)
-
-    if (invitation) {
-      teamId = invitation.teamId
-      userRole = invitation.role
-
-      await db
-        .update(invitations)
-        .set({ status: 'accepted' })
-        .where(eq(invitations.id, invitation.id))
-
-      await logActivity(teamId, createdUser.id, ActivityType.ACCEPT_INVITATION)
-      ;[createdTeam] = await db
-        .select()
-        .from(teams)
-        .where(eq(teams.id, teamId))
-        .limit(1)
-    } else {
-      return { error: 'Invalid or expired invitation.' }
-    }
-  } else {
-    // Create a new team if there's no invitation
-    const newTeam: NewTeam = {
-      name: `${email}'s Team`,
-    }
-
-    ;[createdTeam] = await db.insert(teams).values(newTeam).returning()
-
-    if (!createdTeam) {
-      return { error: 'Failed to create team. Please try again.' }
-    }
-
-    teamId = createdTeam.id
-    userRole = 'owner'
-
-    await logActivity(teamId, createdUser.id, ActivityType.CREATE_TEAM)
-  }
-
-  const newTeamMember: NewTeamMember = {
-    userId: createdUser.id,
-    teamId: teamId,
-    role: userRole,
-  }
-
   try {
-    await Promise.all([
-      db.insert(teamMembers).values(newTeamMember),
-      logActivity(teamId, createdUser.id, ActivityType.SIGN_UP),
-      // setSession(createdUser), // replaced with Lucia auth flow
-    ])
-  } catch (error) {
-    return { error: 'Failed to create team member. Please try signing in.' }
-  }
-
-  // Create Lucia auth session
-  try {
+    const { user: createdUser, team: createdTeam } = await createUserAndTeam(
+      newUser,
+      inviteId
+    )
+    console.log('User and team created successfully')
+    // Create Lucia auth session
     const session = await lucia.createSession(createdUser.id, {})
+    console.log('Lucia session created')
+
     const sessionCookie = lucia.createSessionCookie(session.id)
+    console.log('Session cookie created')
+
     cookies().set(
       sessionCookie.name,
       sessionCookie.value,
       sessionCookie.attributes
     )
-  } catch (error) {
-    console.error('Failed to create session:', error)
-    return { error: 'Failed to create session. Please try signing in.' }
-  }
+    console.log('Cookie set successfully')
 
-  const redirectTo = formData.get('redirect') as string | null
-  if (redirectTo === 'checkout') {
-    const priceId = formData.get('priceId') as string
-    return createCheckoutSession({ team: createdTeam, priceId })
+    const redirectTo = formData.get('redirect') as string | null
+    if (redirectTo === 'checkout') {
+      const priceId = formData.get('priceId') as string
+      return createCheckoutSession({ team: createdTeam, priceId })
+    }
+  } catch (error) {
+    console.error('Failed to create user and team:', error)
+    if (error instanceof Error) {
+      console.error('Error message:', error.message)
+      console.error('Error stack:', error.stack)
+    }
+    return { error: 'Failed to create user and team. Please try again.' }
   }
 
   redirect('/dashboard')
@@ -271,13 +204,27 @@ export async function signOut() {
   //cookies().delete('session')
 
   await lucia.invalidateSession(session.id)
+  // cookies().delete(lucia.sessionCookieName)
 
-  const sessionCookie = lucia.createBlankSessionCookie()
-  cookies().set(
-    sessionCookie.name,
-    sessionCookie.value,
-    sessionCookie.attributes
-  )
+  // const sessionCookie = lucia.createBlankSessionCookie()
+  // cookies().set(
+  //   sessionCookie.name,
+  //   sessionCookie.value,
+  //   sessionCookie.attributes
+  // )
+
+  // Use a more direct method to set cookies
+  const cookieStore = cookies()
+  cookieStore.set(lucia.sessionCookieName, '', {
+    expires: new Date(0),
+    path: '/',
+    sameSite: 'lax',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+  })
+
+  // Return a response instead of redirecting
+  return { success: true }
 }
 
 const updatePasswordSchema = z
@@ -343,24 +290,35 @@ export const deleteAccount = validatedActionWithUser(
 
     const result = await db.query.users.findFirst({
       where: eq(users.id, user.id),
-      columns: { passwordHash: true },
+      columns: { passwordHash: true, githubId: true },
     })
 
-    if (!result?.passwordHash) {
+    if (!result) {
       return {
-        error: 'Failed to retrieve password hash. Account deletion failed.',
+        error: 'Failed to retrieve user information. Account deletion failed.',
       }
     }
 
-    const isPasswordValid = await verify(result.passwordHash, password, {
-      memoryCost: 19456,
-      timeCost: 2,
-      outputLen: 32,
-      parallelism: 1,
-    })
+    // Check if the user is authenticated with GitHub
+    if (result.githubId) {
+      // For GitHub users, we don't need to verify the password
+      // You might want to add an additional confirmation step here
+    } else if (result.passwordHash) {
+      // For email/password users, verify the password
+      const isPasswordValid = await verify(result.passwordHash, password, {
+        memoryCost: 19456,
+        timeCost: 2,
+        outputLen: 32,
+        parallelism: 1,
+      })
 
-    if (!isPasswordValid) {
-      return { error: 'Incorrect password. Account deletion failed.' }
+      if (!isPasswordValid) {
+        return { error: 'Incorrect password. Account deletion failed.' }
+      }
+    } else {
+      return {
+        error: 'Invalid authentication method. Account deletion failed.',
+      }
     }
 
     const userWithTeam = await getUserWithTeam(user.id)
@@ -377,6 +335,8 @@ export const deleteAccount = validatedActionWithUser(
       .set({
         deletedAt: sql`CURRENT_TIMESTAMP`,
         email: sql`CONCAT(email, '-', id, '-deleted')`, // Ensure email uniqueness
+        githubId: null, // Clear GitHub ID
+        githubUsername: null, // Clear GitHub username
       })
       .where(eq(users.id, user.id))
 
@@ -391,7 +351,6 @@ export const deleteAccount = validatedActionWithUser(
         )
     }
 
-    // cookies().delete('session')
     await lucia.invalidateSession(session.id)
     redirect('/sign-in')
   }
@@ -405,6 +364,12 @@ const updateAccountSchema = z.object({
 export const updateAccount = validatedActionWithUser(
   updateAccountSchema,
   async (data, _, user) => {
+    const { user: userOfSession, session } = await validateRequest()
+
+    if (!userOfSession || !session) {
+      return { error: 'Unauthorized' }
+    }
+
     const { name, email } = data
     const userWithTeam = await getUserWithTeam(user.id)
 
@@ -424,6 +389,12 @@ const removeTeamMemberSchema = z.object({
 export const removeTeamMember = validatedActionWithUser(
   removeTeamMemberSchema,
   async (data, _, user) => {
+    const { user: userOfSession, session } = await validateRequest()
+
+    if (!userOfSession || !session) {
+      return { error: 'Unauthorized' }
+    }
+
     const { memberId } = data
     const userWithTeam = await getUserWithTeam(user.id)
 
@@ -458,6 +429,12 @@ const inviteTeamMemberSchema = z.object({
 export const inviteTeamMember = validatedActionWithUser(
   inviteTeamMemberSchema,
   async (data, _, user) => {
+    const { user: userOfSession, session } = await validateRequest()
+
+    if (!userOfSession || !session) {
+      return { error: 'Unauthorized' }
+    }
+
     const { email, role } = data
     const userWithTeam = await getUserWithTeam(user.id)
 
@@ -496,13 +473,16 @@ export const inviteTeamMember = validatedActionWithUser(
     }
 
     // Create a new invitation
-    await db.insert(invitations).values({
-      teamId: userWithTeam.teamId,
-      email,
-      role,
-      invitedBy: user.id,
-      status: 'pending',
-    })
+    const [invitation] = await db
+      .insert(invitations)
+      .values({
+        teamId: userWithTeam.teamId,
+        email,
+        role,
+        invitedBy: user.id,
+        status: 'pending',
+      })
+      .returning()
 
     await logActivity(
       userWithTeam.teamId,
@@ -510,8 +490,26 @@ export const inviteTeamMember = validatedActionWithUser(
       ActivityType.INVITE_TEAM_MEMBER
     )
 
-    // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
-    // await sendInvitationEmail(email, userWithTeam.team.name, role)
+    // Send invitation email
+    const inviteUrl = `${process.env.NEXT_PUBLIC_URL}/sign-up?inviteId=${invitation.id}`
+
+    try {
+      await resend.emails.send({
+        from: 'noreply@nexusscholar.org',
+        to: email,
+        subject: `You've been invited to join ${userWithTeam.teamName}`,
+        react: InvitationEmail({
+          inviteUrl,
+          teamName: userWithTeam.teamName || '',
+          inviterName: user.name || 'A team member',
+        }) as React.ReactElement,
+      })
+    } catch (error) {
+      console.error('Failed to send invitation email:', error)
+      return {
+        error: 'Invitation created but failed to send email. Please try again.',
+      }
+    }
 
     return { success: 'Invitation sent successfully' }
   }

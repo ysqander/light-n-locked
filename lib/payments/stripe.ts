@@ -18,7 +18,7 @@ export async function createCheckoutSession({
 }: {
   team: Team | null
   priceId: string
-}) {
+}): Promise<string> {
   // const user = await getUser();
   const { user } = await validateRequest()
 
@@ -45,7 +45,7 @@ export async function createCheckoutSession({
     },
   })
 
-  redirect(session.url!)
+  return session.url!
 }
 
 export async function createCustomerPortalSession(team: Team) {

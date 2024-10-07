@@ -2,8 +2,11 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   experimental: {
-    ppr: true,
+    ppr: false,
     serverComponentsExternalPackages: ['@node-rs/argon2'],
+  },
+  devIndicators: {
+    appIsrStatus: false,
   },
 }
 

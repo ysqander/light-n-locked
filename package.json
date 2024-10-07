@@ -8,9 +8,11 @@
     "db:seed": "npx tsx lib/db/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "npx tsx lib/db/migrate.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@icons-pack/react-simple-icons": "^10.0.0",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
     "@node-rs/argon2": "^1.8.3",
     "@radix-ui/react-avatar": "^1.1.0",
@@ -21,6 +23,7 @@
     "@radix-ui/react-scroll-area": "^1.1.0",
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "@react-email/components": "0.0.25",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^22.5.5",
     "@types/react": "^18.3.7",
@@ -37,7 +40,7 @@
     "lucia": "^3.2.0",
     "lucide-react": "^0.441.0",
     "next": "15.0.0-canary.152",
-    "oslo": "^1.2.1",
+    "oslo": "^1.2.0",
     "postcss": "^8.4.47",
     "postgres": "^3.4.4",
     "react": "19.0.0-rc-7771d3a7-20240827",

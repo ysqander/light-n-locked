@@ -1,28 +1,39 @@
-'use client';
+'use client'
 
-import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { customerPortalAction } from '@/lib/payments/actions';
-import { useActionState } from 'react';
-import { TeamDataWithMembers, User } from '@/lib/db/schema';
-import { removeTeamMember } from '@/app/(login)/actions';
-import { InviteTeamMember } from './invite-team';
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { customerPortalAction } from '@/lib/payments/actions'
+import { useActionState } from 'react'
+import { TeamDataWithMembers, User } from '@/lib/db/schema'
+import { removeTeamMember } from '@/app/(login)/actions'
+import { InviteTeamMember } from './invite-team'
+import { useRouter } from 'next/navigation'
+import { useUser } from '@/lib/auth'
+import { useEffect } from 'react'
 
 type ActionState = {
-  error?: string;
-  success?: string;
-};
+  error?: string
+  success?: string
+}
 
 export function Settings({ teamData }: { teamData: TeamDataWithMembers }) {
+  // const router = useRouter()
+  // const { user } = useUser()
+  // useEffect(() => {
+  //   if (!user) {
+  //     router.push('/sign-in')
+  //   }
+  // }, [user, router])
+
   const [removeState, removeAction, isRemovePending] = useActionState<
     ActionState,
     FormData
-  >(removeTeamMember, { error: '', success: '' });
+  >(removeTeamMember, { error: '', success: '' })
 
   const getUserDisplayName = (user: Pick<User, 'id' | 'name' | 'email'>) => {
-    return user.name || user.email || 'Unknown User';
-  };
+    return user.name || user.email || 'Unknown User'
+  }
 
   return (
     <section className="flex-1 p-4 lg:p-8">
@@ -42,8 +53,8 @@ export function Settings({ teamData }: { teamData: TeamDataWithMembers }) {
                   {teamData.subscriptionStatus === 'active'
                     ? 'Billed monthly'
                     : teamData.subscriptionStatus === 'trialing'
-                      ? 'Trial period'
-                      : 'No active subscription'}
+                    ? 'Trial period'
+                    : 'No active subscription'}
                 </p>
               </div>
               <form action={customerPortalAction}>
@@ -108,5 +119,5 @@ export function Settings({ teamData }: { teamData: TeamDataWithMembers }) {
       </Card>
       <InviteTeamMember />
     </section>
-  );
+  )
 }

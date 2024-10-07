@@ -8,6 +8,9 @@ import { Lock, Trash2, Loader2 } from 'lucide-react'
 import { startTransition, useActionState } from 'react'
 import { deleteAccount, requestPasswordReset } from '@/app/(login)/actions'
 import React from 'react' // Added import for React
+import { useUser } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 type ActionState = {
   error?: string
@@ -60,6 +63,14 @@ export default function SecurityPage() {
     })
   }
 
+  const { user } = useUser()
+  const router = useRouter()
+  useEffect(() => {
+    if (!user) {
+      router.push('/sign-in')
+    }
+  }, [user, router])
+
   return (
     <section className="flex-1 p-4 lg:p-8">
       <h1 className="text-lg lg:text-2xl font-medium bold text-gray-900 mb-6">
@@ -67,48 +78,50 @@ export default function SecurityPage() {
       </h1>
 
       {/* Password Reset Section */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Reset Password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handleResetSubmit}>
-            <div>
-              <Label htmlFor="reset-password"> Email Address</Label>
-              <p>Enter the email you signed up with</p>
-              <Input
-                id="reset-password"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                minLength={3}
-                maxLength={255}
-              />
-            </div>
-            {resetState.error && (
-              <p className="text-red-500 text-sm">{resetState.error}</p>
-            )}
-            {resetState.success && (
-              <p className="text-green-500 text-sm">{resetState.success}</p>
-            )}
-            <Button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-              disabled={isResetPending}
-            >
-              {isResetPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                'Send Reset Link'
+      {!user?.githubId && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Reset Password</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleResetSubmit}>
+              <div>
+                <Label htmlFor="reset-password"> Email Address</Label>
+                <p>Enter the email you signed up with</p>
+                <Input
+                  id="reset-password"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  minLength={3}
+                  maxLength={255}
+                />
+              </div>
+              {resetState.error && (
+                <p className="text-red-500 text-sm">{resetState.error}</p>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              {resetState.success && (
+                <p className="text-green-500 text-sm">{resetState.success}</p>
+              )}
+              <Button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+                disabled={isResetPending}
+              >
+                {isResetPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Commented Out Password Update Section */}
       {/*
@@ -191,17 +204,19 @@ export default function SecurityPage() {
             Account deletion is non-reversible. Please proceed with caution.
           </p>
           <form onSubmit={handleDeleteSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="delete-password">Confirm Password</Label>
-              <Input
-                id="delete-password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                maxLength={100}
-              />
-            </div>
+            {!user?.githubId && (
+              <div>
+                <Label htmlFor="delete-password">Confirm Password</Label>
+                <Input
+                  id="delete-password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  maxLength={100}
+                />
+              </div>
+            )}
             {deleteState.error && (
               <p className="text-red-500 text-sm">{deleteState.error}</p>
             )}

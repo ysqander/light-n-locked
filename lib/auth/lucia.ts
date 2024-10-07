@@ -21,9 +21,11 @@ export const lucia = new Lucia(adapter, {
   },
   getUserAttributes: (attributes) => {
     return {
-      github_id: attributes.github_id,
-      github_username: attributes.github_username,
+      githubId: attributes.github_id,
+      githubUsername: attributes.github_username,
       email: attributes.email,
+      name: attributes.name,
+      role: attributes.role,
     }
   },
 })
@@ -41,7 +43,8 @@ interface DatabaseUserAttributes {
   github_id: number
   github_username: string
   email: string
-  passwordHash: string // Added passwordHash
+  name: string
+  role: string
 }
 
 export const github = new GitHub(

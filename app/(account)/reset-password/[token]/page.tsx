@@ -1,26 +1,22 @@
 'use client'
 
-import ResetPasswordForm from '@/components/ResetPasswordform'
-import { useParams } from 'next/navigation' // Import useParams to access URL parameters
-import { resetPassword } from '@/app/(login)/reset-password/[token]/actions' // Ensure correct import
+import { useParams, useRouter } from 'next/navigation' // Import useParams to access URL parameters
+import { resetPassword } from '@/app/(account)/reset-password/[token]/actions' // Ensure correct import
 import { useActionState, startTransition } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 import Head from 'next/head'
+import { useEffect, useState } from 'react'
 
 export default function ResetPasswordPage() {
   const params = useParams()
   const { token } = params
-
+  const router = useRouter()
   type ActionState = {
     error?: string
     success?: string
-  }
-
-  type ResetPasswordFormProps = {
-    token: string
   }
 
   const [resetState, resetAction, isResetPending] = useActionState<
@@ -36,6 +32,17 @@ export default function ResetPasswordPage() {
     })
   }
 
+  useEffect(() => {
+    if (resetState.success) {
+      // Navigate to dashboard after a short delay
+      const timer = setTimeout(() => {
+        router.push('/dashboard')
+      }, 3000) // 2 seconds delay
+
+      return () => clearTimeout(timer)
+    }
+  }, [resetState.success])
+
   return (
     <div>
       <Head>
@@ -46,7 +53,7 @@ export default function ResetPasswordPage() {
           Reset Your Password
         </h1>
         <div>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
             <input type="hidden" name="token" value={token} />{' '}
             {/* Hidden token field */}
             <div>
@@ -57,7 +64,8 @@ export default function ResetPasswordPage() {
                 type="password"
                 required
                 minLength={8}
-                maxLength={100}
+                maxLength={30}
+                className="w-full"
               />
             </div>
             <div>
@@ -68,16 +76,25 @@ export default function ResetPasswordPage() {
                 type="password"
                 required
                 minLength={8}
-                maxLength={100}
+                maxLength={30}
+                className="w-full"
               />
             </div>
             {resetState.error && (
               <p className="text-red-500 text-sm">{resetState.error}</p>
             )}
             {resetState.success && (
-              <p className="text-green-500 text-sm">{resetState.success}</p>
+              <div>
+                <p className="text-green-500 text-sm">{resetState.success}</p>
+                <p className="text-black-500 text-sm">
+                  {resetState.success} Redirecting to dashboard...
+                </p>
+              </div>
             )}
-            <Button type="submit" disabled={isResetPending}>
+            <Button
+              type="submit"
+              disabled={isResetPending || !!resetState.success}
+            >
               {isResetPending ? (
                 <div>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
