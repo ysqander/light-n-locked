@@ -15,6 +15,13 @@
       "when": 1728227939773,
       "tag": "0001_typical_tigra",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1728304487891,
+      "tag": "0002_careful_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

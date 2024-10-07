@@ -18,12 +18,6 @@ type ActionState = {
 }
 
 export default function SecurityPage() {
-  // Remove or comment out the password update state
-  // const [passwordState, passwordAction, isPasswordPending] = useActionState<
-  //   ActionState,
-  //   FormData
-  // >(updatePassword, { error: '', success: '' })
-
   // Add state for password reset
   const [resetState, resetAction, isResetPending] = useActionState<
     ActionState,
@@ -34,18 +28,6 @@ export default function SecurityPage() {
     ActionState,
     FormData
   >(deleteAccount, { error: '', success: '' })
-
-  const handlePasswordSubmit = async (
-    event: React.FormEvent<HTMLFormElement>
-  ) => {
-    event.preventDefault()
-    // Commenting out the existing password update handler
-    /*
-    startTransition(() => {
-      passwordAction(new FormData(event.currentTarget))
-    })
-    */
-  }
 
   const handleResetSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -70,6 +52,13 @@ export default function SecurityPage() {
       router.push('/sign-in')
     }
   }, [user, router])
+
+  // on dlete move to main page
+  useEffect(() => {
+    if (deleteState.success) {
+      router.push('/')
+    }
+  }, [deleteState.success])
 
   return (
     <section className="flex-1 p-4 lg:p-8">
@@ -123,77 +112,6 @@ export default function SecurityPage() {
         </Card>
       )}
 
-      {/* Commented Out Password Update Section */}
-      {/*
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handlePasswordSubmit}>
-            <div>
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input
-                id="current-password"
-                name="currentPassword"
-                type="password"
-                autoComplete="current-password"
-                required
-                minLength={8}
-                maxLength={100}
-              />
-            </div>
-            <div>
-              <Label htmlFor="new-password">New Password</Label>
-              <Input
-                id="new-password"
-                name="newPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                maxLength={100}
-              />
-            </div>
-            <div>
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
-              <Input
-                id="confirm-password"
-                name="confirmPassword"
-                type="password"
-                required
-                minLength={8}
-                maxLength={100}
-              />
-            </div>
-            {passwordState.error && (
-              <p className="text-red-500 text-sm">{passwordState.error}</p>
-            )}
-            {passwordState.success && (
-              <p className="text-green-500 text-sm">{passwordState.success}</p>
-            )}
-            <Button
-              type="submit"
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-              disabled={isPasswordPending}
-            >
-              {isPasswordPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Lock className="mr-2 h-4 w-4" />
-                  Update Password
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-      */}
-
       {/* Delete Account Section */}
       <Card>
         <CardHeader>
@@ -204,19 +122,18 @@ export default function SecurityPage() {
             Account deletion is non-reversible. Please proceed with caution.
           </p>
           <form onSubmit={handleDeleteSubmit} className="space-y-4">
-            {!user?.githubId && (
-              <div>
-                <Label htmlFor="delete-password">Confirm Password</Label>
-                <Input
-                  id="delete-password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={8}
-                  maxLength={100}
-                />
-              </div>
-            )}
+            <div>
+              <Label htmlFor="confirm-delete">
+                Type "CONFIRM DELETE" to proceed
+              </Label>
+              <Input
+                id="confirm-delete"
+                name="confirmText"
+                type="text"
+                required
+                placeholder=""
+              />
+            </div>
             {deleteState.error && (
               <p className="text-red-500 text-sm">{deleteState.error}</p>
             )}

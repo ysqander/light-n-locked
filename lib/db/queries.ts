@@ -27,7 +27,7 @@ export async function getUser() {
   const user = await db
     .select()
     .from(users)
-    .where(and(eq(users.id, sessionData.user.id), isNull(users.deletedAt)))
+    .where(and(eq(users.id, sessionData.user.id), isNull(users.deletedAt))) // Add check for deletedAt
     .limit(1)
 
   if (user.length === 0) {
@@ -75,7 +75,7 @@ export async function getUserWithTeam(userId: number) {
     .from(users)
     .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
     .leftJoin(teams, eq(teamMembers.teamId, teams.id))
-    .where(eq(users.id, userId))
+    .where(and(eq(users.id, userId), isNull(users.deletedAt))) // Add check for deletedAt
     .limit(1)
 
   return result[0]
@@ -98,14 +98,14 @@ export async function getActivityLogs() {
     })
     .from(activityLogs)
     .leftJoin(users, eq(activityLogs.userId, users.id))
-    .where(eq(activityLogs.userId, user.id))
+    .where(and(eq(activityLogs.userId, user.id), isNull(users.deletedAt))) // Add check for deletedAt
     .orderBy(desc(activityLogs.timestamp))
     .limit(10)
 }
 
 export async function getTeamForUser(userId: number) {
   const result = await db.query.users.findFirst({
-    where: eq(users.id, userId),
+    where: and(eq(users.id, userId), isNull(users.deletedAt)), // Add check for deletedAt
     with: {
       teamMembers: {
         with: {

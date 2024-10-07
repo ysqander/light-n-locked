@@ -2,8 +2,10 @@ import {
   ActivityType,
   activityLogs,
   type NewActivityLog,
+  users,
 } from '@/lib/db/schema'
 import { db } from '@/lib/db/drizzle'
+import { eq, and, isNull, desc } from 'drizzle-orm'
 
 export async function logActivity(
   teamId: number | null | undefined,
@@ -21,4 +23,19 @@ export async function logActivity(
     ipAddress: ipAddress || '',
   }
   await db.insert(activityLogs).values(newActivity)
+}
+
+export async function getActivityLogsForActiveUsers(teamId: number) {
+  return db
+    .select({
+      id: activityLogs.id,
+      action: activityLogs.action,
+      timestamp: activityLogs.timestamp,
+      ipAddress: activityLogs.ipAddress,
+      userId: activityLogs.userId,
+    })
+    .from(activityLogs)
+    .innerJoin(users, eq(activityLogs.userId, users.id))
+    .where(and(eq(activityLogs.teamId, teamId), isNull(users.deletedAt)))
+    .orderBy(desc(activityLogs.timestamp))
 }

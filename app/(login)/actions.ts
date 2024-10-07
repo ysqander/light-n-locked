@@ -40,26 +40,8 @@ import { createUserAndTeam } from '@/lib/db/data-access/users'
 import { logActivity } from '@/lib/db/data-access/activity'
 import { getUserWithTeamByEmail } from '@/lib/db/data-access/users'
 import InvitationEmail from '@/components/InvitationEmail'
-
+import { softDeleteUser } from '@/lib/db/data-access/users'
 const resend = new Resend(process.env.RESEND_API_KEY)
-
-// async function logActivity(
-//   teamId: number | null | undefined,
-//   userId: number,
-//   type: ActivityType,
-//   ipAddress?: string
-// ) {
-//   if (teamId === null || teamId === undefined) {
-//     return
-//   }
-//   const newActivity: NewActivityLog = {
-//     teamId,
-//     userId,
-//     action: type,
-//     ipAddress: ipAddress || '',
-//   }
-//   await db.insert(activityLogs).values(newActivity)
-// }
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
@@ -76,11 +58,6 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   }
 
   const { user: foundUser, team: foundTeam } = userWithTeam[0]
-
-  // const isPasswordValid = await comparePasswords(
-  //   password,
-  //   foundUser.passwordHash
-  // )
 
   // login with pasword
   if (foundUser.passwordHash && password) {
@@ -161,20 +138,17 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
       newUser,
       inviteId
     )
-    console.log('User and team created successfully')
+
     // Create Lucia auth session
     const session = await lucia.createSession(createdUser.id, {})
-    console.log('Lucia session created')
 
     const sessionCookie = lucia.createSessionCookie(session.id)
-    console.log('Session cookie created')
 
     cookies().set(
       sessionCookie.name,
       sessionCookie.value,
       sessionCookie.attributes
     )
-    console.log('Cookie set successfully')
 
     const redirectTo = formData.get('redirect') as string | null
     if (redirectTo === 'checkout') {
@@ -182,12 +156,9 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
       return createCheckoutSession({ team: createdTeam, priceId })
     }
   } catch (error) {
-    console.error('Failed to create user and team:', error)
     if (error instanceof Error) {
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
+      return { error: 'Failed to create user and team. Please try again.' }
     }
-    return { error: 'Failed to create user and team. Please try again.' }
   }
 
   redirect('/dashboard')
@@ -204,14 +175,6 @@ export async function signOut() {
   //cookies().delete('session')
 
   await lucia.invalidateSession(session.id)
-  // cookies().delete(lucia.sessionCookieName)
-
-  // const sessionCookie = lucia.createBlankSessionCookie()
-  // cookies().set(
-  //   sessionCookie.name,
-  //   sessionCookie.value,
-  //   sessionCookie.attributes
-  // )
 
   // Use a more direct method to set cookies
   const cookieStore = cookies()
@@ -238,43 +201,10 @@ const updatePasswordSchema = z
     path: ['confirmPassword'],
   })
 
-// export const updatePassword = validatedActionWithUser(
-//   updatePasswordSchema,
-//   async (data, _, user) => {
-//     const { currentPassword, newPassword } = data
-
-//     const isPasswordValid = await comparePasswords(
-//       currentPassword,
-//       user.passwordHash
-//     )
-
-//     if (!isPasswordValid) {
-//       return { error: 'Current password is incorrect.' }
-//     }
-
-//     if (currentPassword === newPassword) {
-//       return {
-//         error: 'New password must be different from the current password.',
-//       }
-//     }
-
-//     const newPasswordHash = await hashPassword(newPassword)
-//     const userWithTeam = await getUserWithTeam(user.id)
-
-//     await Promise.all([
-//       db
-//         .update(users)
-//         .set({ passwordHash: newPasswordHash })
-//         .where(eq(users.id, user.id)),
-//       logActivity(userWithTeam?.teamId, user.id, ActivityType.UPDATE_PASSWORD),
-//     ])
-
-//     return { success: 'Password updated successfully.' }
-//   }
-// )
-
 const deleteAccountSchema = z.object({
-  password: z.string().min(8).max(100),
+  confirmText: z.string().refine((value) => value === 'CONFIRM DELETE', {
+    message: "Please type 'CONFIRM DELETE' to proceed",
+  }),
 })
 
 export const deleteAccount = validatedActionWithUser(
@@ -286,40 +216,7 @@ export const deleteAccount = validatedActionWithUser(
       return { error: 'Unauthorized' }
     }
 
-    const { password } = data
-
-    const result = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-      columns: { passwordHash: true, githubId: true },
-    })
-
-    if (!result) {
-      return {
-        error: 'Failed to retrieve user information. Account deletion failed.',
-      }
-    }
-
-    // Check if the user is authenticated with GitHub
-    if (result.githubId) {
-      // For GitHub users, we don't need to verify the password
-      // You might want to add an additional confirmation step here
-    } else if (result.passwordHash) {
-      // For email/password users, verify the password
-      const isPasswordValid = await verify(result.passwordHash, password, {
-        memoryCost: 19456,
-        timeCost: 2,
-        outputLen: 32,
-        parallelism: 1,
-      })
-
-      if (!isPasswordValid) {
-        return { error: 'Incorrect password. Account deletion failed.' }
-      }
-    } else {
-      return {
-        error: 'Invalid authentication method. Account deletion failed.',
-      }
-    }
+    // Confirmation text is already validated by Zod schema
 
     const userWithTeam = await getUserWithTeam(user.id)
 
@@ -330,15 +227,7 @@ export const deleteAccount = validatedActionWithUser(
     )
 
     // Soft delete
-    await db
-      .update(users)
-      .set({
-        deletedAt: sql`CURRENT_TIMESTAMP`,
-        email: sql`CONCAT(email, '-', id, '-deleted')`, // Ensure email uniqueness
-        githubId: null, // Clear GitHub ID
-        githubUsername: null, // Clear GitHub username
-      })
-      .where(eq(users.id, user.id))
+    await softDeleteUser(user.id)
 
     if (userWithTeam?.teamId) {
       await db
@@ -352,7 +241,13 @@ export const deleteAccount = validatedActionWithUser(
     }
 
     await lucia.invalidateSession(session.id)
-    redirect('/sign-in')
+    const sessionCookie = lucia.createBlankSessionCookie()
+    cookies().set(
+      sessionCookie.name,
+      sessionCookie.value,
+      sessionCookie.attributes
+    )
+    return { success: 'Account deleted successfully.' }
   }
 )
 

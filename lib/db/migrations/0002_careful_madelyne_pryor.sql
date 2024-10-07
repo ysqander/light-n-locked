@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "deletion_method" varchar(20);

@@ -14,7 +14,16 @@ export async function GET(request: Request): Promise<Response> {
   const state = url.searchParams.get('state')
   const storedState = cookies().get('github_oauth_state')?.value ?? null
 
-  if (!code || !state || !storedState || state !== storedState.split(':')[0]) {
+  // Clear the github_oauth_state cookie
+  cookies().set('github_oauth_state', '', {
+    maxAge: 0,
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax',
+  })
+
+  if (!code || !state || !storedState || state !== storedState) {
     return new Response(null, {
       status: 400,
     })
@@ -36,61 +45,14 @@ export async function GET(request: Request): Promise<Response> {
     })
 
     const userWithTeam = await getUserWithTeamByGithubId(githubUser.id)
-    const { user: foundUser, team: foundTeam } = userWithTeam[0]
 
-    if (foundUser) {
-      if (mode === 'signup') {
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: '/sign-in?error=github_account_exists',
-          },
-        })
-      }
-      const session = await lucia.createSession(foundUser.id, {})
-      const sessionCookie = lucia.createSessionCookie(session.id)
-      cookies().set(
-        sessionCookie.name,
-        sessionCookie.value,
-        sessionCookie.attributes
-      )
-
-      // Handle checkout for existing users
-      if (redirectTo === 'checkout' && priceId) {
-        const url = await createCheckoutSession({
-          team: foundTeam,
-          priceId,
-        })
-
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: url,
-          },
-        })
-      }
-
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: '/dashboard',
-        },
-      })
-    } else {
-      if (mode === 'signin') {
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: '/sign-up?error=github_account_not_found',
-          },
-        })
-      }
+    if (userWithTeam.length === 0) {
       // Create new user logging in with GitHub
       const newUser: NewUser = {
         githubId: githubUser.id,
         githubUsername: githubUser.login,
         email: githubUser.email, // This might be null or undefined
-        role: 'member', // Default role, will be overridden if there's an invitation
+        role: 'owner', // Default role, will be overridden if there's an invitation
       }
 
       try {
@@ -131,6 +93,47 @@ export async function GET(request: Request): Promise<Response> {
           status: 500,
         })
       }
+    } else {
+      const { user: foundUser, team: foundTeam } = userWithTeam[0]
+
+      if (mode === 'signup') {
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: '/sign-in?error=github_account_exists',
+          },
+        })
+      }
+
+      const session = await lucia.createSession(foundUser.id, {})
+      const sessionCookie = lucia.createSessionCookie(session.id)
+      cookies().set(
+        sessionCookie.name,
+        sessionCookie.value,
+        sessionCookie.attributes
+      )
+
+      // Handle checkout for existing users
+      if (redirectTo === 'checkout' && priceId) {
+        const url = await createCheckoutSession({
+          team: foundTeam,
+          priceId,
+        })
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: url,
+          },
+        })
+      }
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: '/dashboard',
+        },
+      })
     }
   } catch (e) {
     // the specific error message depends on the provider

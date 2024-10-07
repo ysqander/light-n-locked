@@ -19,6 +19,7 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
+  deletionMethod: varchar('deletion_method', { length: 20 }),
 })
 
 export const sessions = pgTable('sessions', {
