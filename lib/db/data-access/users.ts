@@ -8,7 +8,7 @@ import {
   type NewTeam,
   type NewTeamMember,
 } from '@/lib/db/schema'
-import { eq, and, or, isNotNull, like, sql } from 'drizzle-orm'
+import { eq, and, or, isNotNull, like, sql, isNull } from 'drizzle-orm'
 import { ActivityType } from '@/lib/db/schema'
 import { logActivity } from '@/lib/db/data-access/activity'
 
@@ -103,6 +103,22 @@ export async function getUserWithTeamByEmail(email: string) {
     .limit(1)
 
   return result
+}
+
+export async function getUserWithTeam(userId: number) {
+  const result = await db
+    .select({
+      user: users,
+      teamId: teamMembers.teamId,
+      teamName: teams.name,
+    })
+    .from(users)
+    .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
+    .leftJoin(teams, eq(teamMembers.teamId, teams.id))
+    .where(and(eq(users.id, userId), isNull(users.deletedAt))) // Add check for deletedAt
+    .limit(1)
+
+  return result[0]
 }
 
 export async function getUserWithTeamByGithubId(githubId: string) {

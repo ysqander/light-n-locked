@@ -26,7 +26,6 @@ import {
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createCheckoutSession } from '@/lib/payments/stripe'
-import { getUser, getUserWithTeam } from '@/lib/db/queries'
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware'
 import { lucia, validateRequest } from '@/lib/auth/lucia'
 import { verify } from '@node-rs/argon2'
@@ -36,7 +35,7 @@ import { encodeHex } from 'oslo/encoding'
 import { generateIdFromEntropySize } from 'lucia'
 import { isWithinExpirationDate } from '@/lib/utils/dateUtils' // Ensure this import is present
 import { Resend } from 'resend'
-import { createUserAndTeam } from '@/lib/db/data-access/users'
+import { createUserAndTeam, getUserWithTeam } from '@/lib/db/data-access/users'
 import { logActivity } from '@/lib/db/data-access/activity'
 import { getUserWithTeamByEmail } from '@/lib/db/data-access/users'
 import InvitationEmail from '@/components/InvitationEmail'
@@ -165,7 +164,6 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
 })
 
 export async function signOut() {
-  // const user = (await getUser()) as User
   const { user, session } = await validateRequest()
   if (!user || !session) {
     return { error: 'Unauthorized' }

@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { ActivityType } from '@/lib/db/schema'
-import { getActivityLogs } from '@/lib/db/queries'
+import { getActivityLogs } from '@/lib/db/data-access/activity'
 import { validateRequest } from '@/lib/auth/lucia'
 import { redirect } from 'next/navigation'
 const iconMap: Record<ActivityType, LucideIcon> = {

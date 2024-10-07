@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { TeamDataWithMembers } from '@/lib/db/schema' // removed User object from db and replaced with the Lucia one
-import { getTeamForUser, getUser } from '@/lib/db/queries'
+import { getTeamForUser } from '@/lib/db/data-access/teams'
 import { redirect } from 'next/navigation'
 import { validateRequest } from '@/lib/auth/lucia'
 import { User } from 'lucia'
@@ -41,7 +41,6 @@ export function validatedActionWithUser<S extends z.ZodType<any, any>, T>(
   action: ValidatedActionWithUserFunction<S, T>
 ) {
   return async (prevState: ActionState, formData: FormData): Promise<T> => {
-    // const user = await getUser()
     const { user } = await validateRequest()
     if (!user) {
       throw new Error('User is not authenticated')
@@ -63,7 +62,6 @@ type ActionWithTeamFunction<T> = (
 
 export function withTeam<T>(action: ActionWithTeamFunction<T>) {
   return async (formData: FormData): Promise<T> => {
-    // const user = await getUser()
     const { user } = await validateRequest()
     if (!user) {
       redirect('/sign-in')

@@ -1,11 +1,11 @@
 import Stripe from 'stripe'
 import { redirect } from 'next/navigation'
 import { Team } from '@/lib/db/schema'
+
 import {
   getTeamByStripeCustomerId,
-  getUser,
   updateTeamSubscription,
-} from '@/lib/db/queries'
+} from '@/lib/db/data-access/teams'
 import { validateRequest } from '@/lib/auth/lucia'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -19,7 +19,6 @@ export async function createCheckoutSession({
   team: Team | null
   priceId: string
 }): Promise<string> {
-  // const user = await getUser();
   const { user } = await validateRequest()
 
   if (!team || !user) {

@@ -1,10 +1,9 @@
 import { redirect } from 'next/navigation'
 import { Settings } from './settings'
-import { getTeamForUser, getUser } from '@/lib/db/queries'
+import { getTeamForUser } from '@/lib/db/data-access/teams'
 import { validateRequest } from '@/lib/auth/lucia'
 
 export default async function SettingsPage() {
-  //const user = await getUser();
   const { user } = await validateRequest()
 
   if (!user) {

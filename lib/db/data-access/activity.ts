@@ -6,6 +6,7 @@ import {
 } from '@/lib/db/schema'
 import { db } from '@/lib/db/drizzle'
 import { eq, and, isNull, desc } from 'drizzle-orm'
+import { validateRequest } from '@/lib/auth/lucia'
 
 export async function logActivity(
   teamId: number | null | undefined,
@@ -23,6 +24,27 @@ export async function logActivity(
     ipAddress: ipAddress || '',
   }
   await db.insert(activityLogs).values(newActivity)
+}
+
+export async function getActivityLogs() {
+  const { user } = await validateRequest()
+  if (!user) {
+    throw new Error('User not authenticated')
+  }
+
+  return await db
+    .select({
+      id: activityLogs.id,
+      action: activityLogs.action,
+      timestamp: activityLogs.timestamp,
+      ipAddress: activityLogs.ipAddress,
+      userName: users.name,
+    })
+    .from(activityLogs)
+    .leftJoin(users, eq(activityLogs.userId, users.id))
+    .where(and(eq(activityLogs.userId, user.id), isNull(users.deletedAt))) // Add check for deletedAt
+    .orderBy(desc(activityLogs.timestamp))
+    .limit(10)
 }
 
 export async function getActivityLogsForActiveUsers(teamId: number) {
