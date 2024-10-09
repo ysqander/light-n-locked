@@ -45,9 +45,8 @@ export async function GET(request: Request): Promise<Response> {
       },
     })
     const userResult = await githubUserResponse.json()
-
-    const githubUserId = String(getNestedProperty(userResult, 'id', ''))
-    const username = String(getNestedProperty(userResult, 'login', ''))
+    const githubUserId = Number(getNestedProperty(userResult, 'id'))
+    const githubUsername = String(getNestedProperty(userResult, 'login'))
 
     const emailListResponse = await fetch(
       'https://api.github.com/user/emails',
@@ -58,7 +57,6 @@ export async function GET(request: Request): Promise<Response> {
       }
     )
     const emailListResult: unknown = await emailListResponse.json()
-    console.log('DEBUG: emailListResult', emailListResult)
 
     if (!Array.isArray(emailListResult) || emailListResult.length < 1) {
       return new Response('Please restart the process.', {
@@ -68,11 +66,11 @@ export async function GET(request: Request): Promise<Response> {
 
     let email: string | null = null
     for (const emailRecord of emailListResult) {
-      const primaryEmail = getNestedProperty(emailRecord, 'primary', false)
-      const verifiedEmail = getNestedProperty(emailRecord, 'verified', false)
+      const primaryEmail = getNestedProperty(emailRecord, 'primary')
+      const verifiedEmail = getNestedProperty(emailRecord, 'verified')
       if (primaryEmail && verifiedEmail) {
-        email = String(getNestedProperty(emailRecord, 'email', ''))
-        if (email !== '') break
+        email = String(getNestedProperty(emailRecord, 'email'))
+        if (email !== null) break
       }
     }
 
@@ -82,20 +80,14 @@ export async function GET(request: Request): Promise<Response> {
       })
     }
 
-    const githubUser: GitHubUser = {
-      id: githubUserId,
-      login: username,
-      email,
-    }
-
-    const userWithTeam = await getUserWithTeamByGithubId(githubUser.id)
+    const userWithTeam = await getUserWithTeamByGithubId(githubUserId)
 
     if (userWithTeam.length === 0) {
       // Create new user logging in with GitHub
       const newUser: NewUser = {
-        githubId: githubUser.id,
-        githubUsername: githubUser.login,
-        email: githubUser.email, // This might be null or undefined
+        githubId: githubUserId,
+        githubUsername: githubUsername,
+        email: email,
         role: 'owner', // Default role, will be overridden if there's an invitation
       }
 

@@ -13,7 +13,7 @@ export const users = pgTable('users', {
   name: varchar('name', { length: 100 }),
   email: varchar('email', { length: 255 }).unique(),
   passwordHash: text('password_hash'),
-  githubId: text('github_id').unique(),
+  githubId: integer('github_id').unique(),
   githubUsername: text('github_username'),
   role: varchar('role', { length: 20 }).notNull().default('member'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

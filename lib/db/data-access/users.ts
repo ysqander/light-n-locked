@@ -121,7 +121,7 @@ export async function getUserWithTeam(userId: number) {
   return result[0]
 }
 
-export async function getUserWithTeamByGithubId(githubId: string) {
+export async function getUserWithTeamByGithubId(githubId: number) {
   const result = await db
     .select({
       user: users,
@@ -185,7 +185,7 @@ export async function findSoftDeletedUser(identifier: string) {
 export async function restoreSoftDeletedUser(
   userId: number,
   newEmail: string,
-  newGithubId?: string
+  newGithubId?: number
 ) {
   await db
     .update(users)
