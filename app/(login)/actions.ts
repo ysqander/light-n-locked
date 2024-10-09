@@ -394,7 +394,7 @@ export const inviteTeamMember = validatedActionWithUser(
     )
 
     // Send invitation email
-    const inviteUrl = `${process.env.NEXT_PUBLIC_URL}/sign-up?inviteId=${invitation.id}`
+    const inviteUrl = `${process.env.BASE_URL}/sign-up?inviteId=${invitation.id}`
 
     try {
       await resend.emails.send({
@@ -464,7 +464,7 @@ export const requestPasswordReset = validatedAction(
 
     const userId = user[0].id
     const verificationToken = await createPasswordResetToken(userId)
-    const verificationLink = `${process.env.NEXT_PUBLIC_URL}/reset-password/${verificationToken}`
+    const verificationLink = `${process.env.BASE_URL}/reset-password/${verificationToken}`
 
     await sendPasswordResetToken(email, verificationLink)
 
