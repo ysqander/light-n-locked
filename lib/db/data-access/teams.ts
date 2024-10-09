@@ -3,7 +3,6 @@ import { db } from '@/lib/db/drizzle'
 import { activityLogs, teamMembers, teams, users } from '@/lib/db/schema'
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth/session'
-import { validateRequest } from '@/lib/auth/lucia'
 
 export async function getTeamByStripeCustomerId(customerId: string) {
   const result = await db

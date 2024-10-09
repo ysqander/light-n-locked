@@ -10,7 +10,7 @@ import { deleteAccount, requestPasswordReset } from '@/app/(login)/actions'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { User } from 'lucia'
+import { User } from '@/lib/db/schema'
 
 type ActionState = {
   error?: string

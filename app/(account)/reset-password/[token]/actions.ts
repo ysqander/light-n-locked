@@ -11,7 +11,15 @@ import { isWithinExpirationDate } from '@/lib/utils/dateUtils'
 import { hashPasswordArgon2 } from '@/lib/auth/session'
 import { lucia } from '@/lib/auth/lucia'
 import { cookies } from 'next/headers'
-import { validateRequest } from '@/lib/auth/lucia'
+import {
+  generateSessionToken,
+  createSession,
+  setSessionTokenCookie,
+  getCurrentSession,
+  invalidateSession,
+  deleteSessionTokenCookie,
+} from '@/lib/auth/diy'
+import { globalPOSTRateLimit } from '@/lib/server/request'
 
 export const resetPassword = validatedAction(
   z.object({
@@ -24,12 +32,16 @@ export const resetPassword = validatedAction(
   //   path: ['confirmPassword'],
   // }),
   async (data) => {
+    if (!globalPOSTRateLimit()) {
+      return { error: 'Too many requests' }
+    }
+
     // Check if passwords match
     if (data.password !== data.confirmPassword) {
       return { error: "Passwords don't match" }
     }
 
-    const { user } = await validateRequest()
+    const { user, session } = await getCurrentSession()
     if (!user) {
       return { error: 'Unauthorized' }
     }
@@ -61,8 +73,6 @@ export const resetPassword = validatedAction(
     const newPasswordHash = await hashPasswordArgon2(password)
 
     await Promise.all([
-      lucia.invalidateUserSessions(userId),
-
       db
         .update(users)
         .set({ passwordHash: newPasswordHash })
@@ -75,13 +85,23 @@ export const resetPassword = validatedAction(
         .execute(),
     ])
 
-    const session = await lucia.createSession(userId, {})
-    const sessionCookie = lucia.createSessionCookie(session.id)
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes
-    )
+    //lucia.invalidateUserSessions(userId),
+
+    invalidateSession(session.id)
+    deleteSessionTokenCookie()
+
+    // const session = await lucia.createSession(userId, {})
+    // const sessionCookie = lucia.createSessionCookie(session.id)
+    // cookies().set(
+    //   sessionCookie.name,
+    //   sessionCookie.value,
+    //   sessionCookie.attributes
+    // )
+
+    const sessionToken = generateSessionToken()
+    const newSession = await createSession(sessionToken, userId)
+    setSessionTokenCookie(sessionToken, newSession.expiresAt)
+
     //Referrer-Policy set to 'strict-origin' in the head of the page
     return { success: 'Password reset successful.' }
   }

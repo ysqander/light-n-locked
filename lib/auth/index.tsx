@@ -8,8 +8,9 @@ import {
   useEffect,
 } from 'react'
 import { use } from 'react'
-// import { User } from '@/lib/db/schema';
-import { User, Session } from 'lucia'
+import { User } from '@/lib/db/schema'
+// import { User, Session } from 'lucia'
+import { SessionValidationResult } from '@/lib/auth/diy'
 
 type UserContextType = {
   user: User | null
@@ -31,9 +32,7 @@ export function UserProvider({
   userPromise,
 }: {
   children: ReactNode
-  userPromise: Promise<
-    { user: User; session: Session } | { user: null; session: null }
-  >
+  userPromise: Promise<SessionValidationResult>
 }) {
   let { user: initialUser } = use(userPromise)
   let [user, setUser] = useState<User | null>(initialUser)

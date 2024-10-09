@@ -6,7 +6,7 @@ import {
 } from '@/lib/db/schema'
 import { db } from '@/lib/db/drizzle'
 import { eq, and, isNull, desc } from 'drizzle-orm'
-import { validateRequest } from '@/lib/auth/lucia'
+import { getCurrentSession } from '@/lib/auth/diy'
 
 export async function logActivity(
   teamId: number | null | undefined,
@@ -27,7 +27,7 @@ export async function logActivity(
 }
 
 export async function getActivityLogs() {
-  const { user } = await validateRequest()
+  const { user } = await getCurrentSession()
   if (!user) {
     throw new Error('User not authenticated')
   }

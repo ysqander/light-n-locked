@@ -29,7 +29,10 @@ export const sessions = pgTable('sessions', {
       onDelete: 'cascade',
     })
     .notNull(),
-  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  expiresAt: timestamp('expires_at', {
+    withTimezone: true,
+    mode: 'date',
+  }).notNull(),
 })
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {
@@ -145,6 +148,7 @@ export const passwordResetTokensRelations = relations(
 
 export type User = typeof users.$inferSelect
 export type NewUser = typeof users.$inferInsert
+export type Session = typeof sessions.$inferSelect
 export type Team = typeof teams.$inferSelect
 export type NewTeam = typeof teams.$inferInsert
 export type TeamMember = typeof teamMembers.$inferSelect

@@ -27,7 +27,7 @@ import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
 import { createCheckoutSession } from '@/lib/payments/stripe'
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware'
-import { lucia, validateRequest } from '@/lib/auth/lucia'
+import { lucia } from '@/lib/auth/lucia'
 import { verify } from '@node-rs/argon2'
 import { TimeSpan, createDate } from 'oslo'
 import { sha256 } from 'oslo/crypto'
@@ -40,6 +40,15 @@ import { logActivity } from '@/lib/db/data-access/activity'
 import { getUserWithTeamByEmail } from '@/lib/db/data-access/users'
 import InvitationEmail from '@/components/InvitationEmail'
 import { softDeleteUser } from '@/lib/db/data-access/users'
+import {
+  generateSessionToken,
+  createSession,
+  setSessionTokenCookie,
+  deleteSessionTokenCookie,
+  invalidateSession,
+  getCurrentSession,
+} from '@/lib/auth/diy'
+
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 const signInSchema = z.object({
@@ -78,13 +87,17 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
       ])
 
       try {
-        const session = await lucia.createSession(foundUser.id, {})
-        const sessionCookie = lucia.createSessionCookie(session.id)
-        cookies().set(
-          sessionCookie.name,
-          sessionCookie.value,
-          sessionCookie.attributes
-        )
+        // const session = await lucia.createSession(foundUser.id, {})
+        // const sessionCookie = lucia.createSessionCookie(session.id)
+        // cookies().set(
+        //   sessionCookie.name,
+        //   sessionCookie.value,
+        //   sessionCookie.attributes
+        // )
+
+        const sessionToken = generateSessionToken()
+        const session = await createSession(sessionToken, foundUser.id)
+        setSessionTokenCookie(sessionToken, session.expiresAt)
       } catch (error) {
         return { error: 'Failed to create session. Please try signing in.' }
       }
@@ -139,15 +152,19 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     )
 
     // Create Lucia auth session
-    const session = await lucia.createSession(createdUser.id, {})
+    // const session = await lucia.createSession(createdUser.id, {})
 
-    const sessionCookie = lucia.createSessionCookie(session.id)
+    // const sessionCookie = lucia.createSessionCookie(session.id)
 
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes
-    )
+    // cookies().set(
+    //   sessionCookie.name,
+    //   sessionCookie.value,
+    //   sessionCookie.attributes
+    // )
+
+    const sessionToken = generateSessionToken()
+    const session = await createSession(sessionToken, createdUser.id)
+    setSessionTokenCookie(sessionToken, session.expiresAt)
 
     const redirectTo = formData.get('redirect') as string | null
     if (redirectTo === 'checkout') {
@@ -164,25 +181,15 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
 })
 
 export async function signOut() {
-  const { user, session } = await validateRequest()
+  const { user, session } = await getCurrentSession()
   if (!user || !session) {
     return { error: 'Unauthorized' }
   }
   const userWithTeam = await getUserWithTeam(user.id)
   await logActivity(userWithTeam?.teamId, user.id, ActivityType.SIGN_OUT)
-  //cookies().delete('session')
 
-  await lucia.invalidateSession(session.id)
-
-  // Use a more direct method to set cookies
-  const cookieStore = cookies()
-  cookieStore.set(lucia.sessionCookieName, '', {
-    expires: new Date(0),
-    path: '/',
-    sameSite: 'lax',
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-  })
+  invalidateSession(session.id)
+  deleteSessionTokenCookie()
 
   // Return a response instead of redirecting
   return { success: true }
@@ -208,7 +215,7 @@ const deleteAccountSchema = z.object({
 export const deleteAccount = validatedActionWithUser(
   deleteAccountSchema,
   async (data, _, questUser) => {
-    const { user, session } = await validateRequest()
+    const { user, session } = await getCurrentSession()
 
     if (!user || !session) {
       return { error: 'Unauthorized' }
@@ -238,13 +245,16 @@ export const deleteAccount = validatedActionWithUser(
         )
     }
 
-    await lucia.invalidateSession(session.id)
-    const sessionCookie = lucia.createBlankSessionCookie()
-    cookies().set(
-      sessionCookie.name,
-      sessionCookie.value,
-      sessionCookie.attributes
-    )
+    // await lucia.invalidateSession(session.id)
+    // const sessionCookie = lucia.createBlankSessionCookie()
+    // cookies().set(
+    //   sessionCookie.name,
+    //   sessionCookie.value,
+    //   sessionCookie.attributes
+    // )
+
+    invalidateSession(session.id)
+    deleteSessionTokenCookie()
     return { success: 'Account deleted successfully.' }
   }
 )
@@ -257,7 +267,7 @@ const updateAccountSchema = z.object({
 export const updateAccount = validatedActionWithUser(
   updateAccountSchema,
   async (data, _, user) => {
-    const { user: userOfSession, session } = await validateRequest()
+    const { user: userOfSession, session } = await getCurrentSession()
 
     if (!userOfSession || !session) {
       return { error: 'Unauthorized' }
@@ -282,7 +292,7 @@ const removeTeamMemberSchema = z.object({
 export const removeTeamMember = validatedActionWithUser(
   removeTeamMemberSchema,
   async (data, _, user) => {
-    const { user: userOfSession, session } = await validateRequest()
+    const { user: userOfSession, session } = await getCurrentSession()
 
     if (!userOfSession || !session) {
       return { error: 'Unauthorized' }
@@ -322,7 +332,7 @@ const inviteTeamMemberSchema = z.object({
 export const inviteTeamMember = validatedActionWithUser(
   inviteTeamMemberSchema,
   async (data, _, user) => {
-    const { user: userOfSession, session } = await validateRequest()
+    const { user: userOfSession, session } = await getCurrentSession()
 
     if (!userOfSession || !session) {
       return { error: 'Unauthorized' }

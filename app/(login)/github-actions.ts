@@ -1,6 +1,7 @@
 'use server'
 
-import { github } from '@/lib/auth/lucia'
+import { github } from '@/lib/auth/diy'
+
 import { generateState } from 'arctic'
 import { cookies } from 'next/headers'
 
@@ -14,7 +15,9 @@ export async function githubSignIn(
   const stateWithInfo = `${state}:${inviteId || ''}:${mode || ''}:${
     redirectTo || ''
   }:${priceId || ''}`
-  const url = await github.createAuthorizationURL(stateWithInfo)
+  const url = await github.createAuthorizationURL(stateWithInfo, {
+    scopes: ['user:email'],
+  })
 
   cookies().set('github_oauth_state', stateWithInfo, {
     path: '/',

@@ -1,9 +1,9 @@
-import { validateRequest } from '@/lib/auth/lucia'
 import { redirect } from 'next/navigation'
 import SecurityClientComponent from './securtiyClientComponent'
+import { getCurrentSession } from '@/lib/auth/diy'
 
 export default async function SecurityPage() {
-  const { user } = await validateRequest()
+  const { user } = await getCurrentSession()
 
   if (!user) {
     redirect('/sign-in')

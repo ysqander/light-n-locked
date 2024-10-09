@@ -6,7 +6,7 @@ import {
   getTeamByStripeCustomerId,
   updateTeamSubscription,
 } from '@/lib/db/data-access/teams'
-import { validateRequest } from '@/lib/auth/lucia'
+import { getCurrentSession } from '@/lib/auth/diy'
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -19,7 +19,7 @@ export async function createCheckoutSession({
   team: Team | null
   priceId: string
 }): Promise<string> {
-  const { user } = await validateRequest()
+  const { user } = await getCurrentSession()
 
   if (!team || !user) {
     redirect(`/sign-up?redirect=checkout&priceId=${priceId}`)

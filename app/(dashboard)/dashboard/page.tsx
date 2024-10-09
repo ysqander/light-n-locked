@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation'
 import { Settings } from './settings'
 import { getTeamForUser } from '@/lib/db/data-access/teams'
-import { validateRequest } from '@/lib/auth/lucia'
+import { getCurrentSession } from '@/lib/auth/diy'
 
 export default async function SettingsPage() {
-  const { user } = await validateRequest()
+  const { user } = await getCurrentSession()
 
   if (!user) {
     redirect('/sign-in')

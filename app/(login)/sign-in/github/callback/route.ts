@@ -7,6 +7,12 @@ import { eq } from 'drizzle-orm'
 import { users, type NewUser } from '@/lib/db/schema'
 import { createCheckoutSession } from '@/lib/payments/stripe'
 import { getUserWithTeamByGithubId } from '@/lib/db/data-access/users'
+import {
+  generateSessionToken,
+  createSession,
+  setSessionTokenCookie,
+} from '@/lib/auth/diy'
+import { getNestedProperty } from '@/lib/utils/parser'
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -38,11 +44,49 @@ export async function GET(request: Request): Promise<Response> {
         Authorization: `Bearer ${tokens.accessToken}`,
       },
     })
-    const githubUser: GitHubUser = await githubUserResponse.json()
+    const userResult = await githubUserResponse.json()
 
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.githubId, githubUser.id),
-    })
+    const githubUserId = String(getNestedProperty(userResult, 'id', ''))
+    const username = String(getNestedProperty(userResult, 'login', ''))
+
+    const emailListResponse = await fetch(
+      'https://api.github.com/user/emails',
+      {
+        headers: {
+          Authorization: `Bearer ${tokens.accessToken}`,
+        },
+      }
+    )
+    const emailListResult: unknown = await emailListResponse.json()
+    console.log('DEBUG: emailListResult', emailListResult)
+
+    if (!Array.isArray(emailListResult) || emailListResult.length < 1) {
+      return new Response('Please restart the process.', {
+        status: 400,
+      })
+    }
+
+    let email: string | null = null
+    for (const emailRecord of emailListResult) {
+      const primaryEmail = getNestedProperty(emailRecord, 'primary', false)
+      const verifiedEmail = getNestedProperty(emailRecord, 'verified', false)
+      if (primaryEmail && verifiedEmail) {
+        email = String(getNestedProperty(emailRecord, 'email', ''))
+        if (email !== '') break
+      }
+    }
+
+    if (email === null) {
+      return new Response('Please verify your GitHub email address.', {
+        status: 400,
+      })
+    }
+
+    const githubUser: GitHubUser = {
+      id: githubUserId,
+      login: username,
+      email,
+    }
 
     const userWithTeam = await getUserWithTeamByGithubId(githubUser.id)
 
@@ -59,13 +103,17 @@ export async function GET(request: Request): Promise<Response> {
         const { user: createdUser, team: createdTeam } =
           await createUserAndTeam(newUser, inviteId)
 
-        const session = await lucia.createSession(createdUser.id, {})
-        const sessionCookie = lucia.createSessionCookie(session.id)
-        cookies().set(
-          sessionCookie.name,
-          sessionCookie.value,
-          sessionCookie.attributes
-        )
+        // const session = await lucia.createSession(createdUser.id, {})
+        // const sessionCookie = lucia.createSessionCookie(session.id)
+        // cookies().set(
+        //   sessionCookie.name,
+        //   sessionCookie.value,
+        //   sessionCookie.attributes
+        // )
+
+        const sessionToken = generateSessionToken()
+        const session = await createSession(sessionToken, createdUser.id)
+        setSessionTokenCookie(sessionToken, session.expiresAt)
 
         // Handle checkout redirection for new users
         if (redirectTo === 'checkout' && priceId) {
@@ -105,13 +153,17 @@ export async function GET(request: Request): Promise<Response> {
         })
       }
 
-      const session = await lucia.createSession(foundUser.id, {})
-      const sessionCookie = lucia.createSessionCookie(session.id)
-      cookies().set(
-        sessionCookie.name,
-        sessionCookie.value,
-        sessionCookie.attributes
-      )
+      // const session = await lucia.createSession(foundUser.id, {})
+      // const sessionCookie = lucia.createSessionCookie(session.id)
+      // cookies().set(
+      //   sessionCookie.name,
+      //   sessionCookie.value,
+      //   sessionCookie.attributes
+      // )
+
+      const sessionToken = generateSessionToken()
+      const session = await createSession(sessionToken, foundUser.id)
+      setSessionTokenCookie(sessionToken, session.expiresAt)
 
       // Handle checkout for existing users
       if (redirectTo === 'checkout' && priceId) {

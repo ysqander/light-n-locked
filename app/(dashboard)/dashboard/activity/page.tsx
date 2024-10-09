@@ -13,8 +13,9 @@ import {
 } from 'lucide-react'
 import { ActivityType } from '@/lib/db/schema'
 import { getActivityLogs } from '@/lib/db/data-access/activity'
-import { validateRequest } from '@/lib/auth/lucia'
 import { redirect } from 'next/navigation'
+import { getCurrentSession } from '@/lib/auth/diy'
+
 const iconMap: Record<ActivityType, LucideIcon> = {
   [ActivityType.SIGN_UP]: UserPlus,
   [ActivityType.SIGN_IN]: UserCog,
@@ -70,7 +71,7 @@ function formatAction(action: ActivityType): string {
 }
 
 export default async function ActivityPage() {
-  const { user } = await validateRequest()
+  const { user } = await getCurrentSession()
   if (!user) {
     redirect('/sign-in')
   }
