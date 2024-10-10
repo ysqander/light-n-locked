@@ -24,7 +24,7 @@ import {
   setSession,
 } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { createCheckoutSession } from '@/lib/payments/stripe'
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware'
 import { lucia } from '@/lib/auth/lucia'
@@ -48,15 +48,41 @@ import {
   invalidateSession,
   getCurrentSession,
 } from '@/lib/auth/diy'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
+import { globalPOSTRateLimit } from '@/lib/server/request'
+import { verifyEmailInput, checkEmailAvailability } from '@/lib/server/email'
+import { verifyPasswordStrength } from '@/lib/server/password'
+import { resend } from '@/lib/utils/resend'
+import {
+  createEmailVerificationRequest,
+  sendVerificationEmail,
+  setEmailVerificationRequestCookie,
+} from '@/lib/server/email-verification'
+import { SessionFlags } from '@/lib/auth/diy'
+import { RefillingTokenBucket, Throttler } from '@/lib/server/rate-limit'
+import { generateRandomRecoveryCode } from '@/lib/utils/codeGen'
+import { encryptString } from '@/lib/server/encryption'
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
   password: z.string().min(8).max(100),
 })
 
+const throttler = new Throttler<number>([1, 2, 4, 8, 16, 30, 60, 180, 300])
+const ipBucket = new RefillingTokenBucket<string>(20, 1)
+
 export const signIn = validatedAction(signInSchema, async (data, formData) => {
+  if (!globalPOSTRateLimit) {
+    return { error: 'Too many requests. Please try again later.' }
+  }
+
+  // TODO: Assumes X-Forwarded-For is always included.
+  const clientIP = headers().get('X-Forwarded-For')
+  if (clientIP !== null && !ipBucket.check(clientIP, 1)) {
+    return {
+      message: 'Too many requests',
+    }
+  }
+
   const { email, password } = data
 
   const userWithTeam = await getUserWithTeamByEmail(email)
@@ -67,6 +93,17 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
 
   const { user: foundUser, team: foundTeam } = userWithTeam[0]
 
+  // Puts rate limits on sepcific user account
+  if (clientIP !== null && !ipBucket.consume(clientIP, 1)) {
+    return {
+      error: 'Too many requests',
+    }
+  }
+  if (!throttler.consume(foundUser.id)) {
+    return {
+      error: 'Too many requests',
+    }
+  }
   // login with pasword
   if (foundUser.passwordHash && password) {
     const isPasswordValid = await verify(foundUser.passwordHash, password, {
@@ -81,27 +118,34 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
         error: 'Invalid email or password. Please try again or sign up.',
       }
     } else {
+      throttler.reset(foundUser.id)
       await Promise.all([
         //setSession(foundUser),
         logActivity(foundTeam?.id, foundUser.id, ActivityType.SIGN_IN),
       ])
 
       try {
-        // const session = await lucia.createSession(foundUser.id, {})
-        // const sessionCookie = lucia.createSessionCookie(session.id)
-        // cookies().set(
-        //   sessionCookie.name,
-        //   sessionCookie.value,
-        //   sessionCookie.attributes
-        // )
+        const sessionFlags: SessionFlags = {
+          twoFactorVerified: false,
+        }
 
         const sessionToken = generateSessionToken()
-        const session = await createSession(sessionToken, foundUser.id)
+        const session = await createSession(
+          sessionToken,
+          foundUser.id,
+          sessionFlags
+        )
         setSessionTokenCookie(sessionToken, session.expiresAt)
       } catch (error) {
         return { error: 'Failed to create session. Please try signing in.' }
       }
-      redirect('/dashboard')
+      if (!foundUser.emailVerified) {
+        return redirect('/verify-email')
+      }
+      if (!foundUser.registered2FA) {
+        return redirect('/2fa/setup')
+      }
+      return redirect('/2fa')
     }
   }
 
@@ -119,12 +163,30 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
 })
 
 const signUpSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().min(3).max(255),
   password: z.string().min(8),
   inviteId: z.string().optional(),
 })
 
 export const signUp = validatedAction(signUpSchema, async (data, formData) => {
+  if (!globalPOSTRateLimit) {
+    return { error: 'Too many requests. Please try again later.' }
+  }
+
+  const emailAvailable = await checkEmailAvailability(data.email)
+  if (!emailAvailable) {
+    return {
+      error: 'Email is already used',
+    }
+  }
+
+  const strongPassword = await verifyPasswordStrength(data.password)
+  if (!strongPassword) {
+    return {
+      error: 'Weak password',
+    }
+  }
+
   const { email, password, inviteId } = data
 
   const existingUser = await db
@@ -138,10 +200,13 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   }
 
   const passwordHash = await hashPasswordArgon2(password)
+  const recoveryCode = generateRandomRecoveryCode()
+  const encryptedRecoveryCode = encryptString(recoveryCode)
 
   const newUser: NewUser = {
     email,
     passwordHash,
+    recoveryCode: Buffer.from(encryptedRecoveryCode),
     role: 'owner', // Default role, will be overridden if there's an invitation
   }
 
@@ -161,11 +226,38 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     //   sessionCookie.value,
     //   sessionCookie.attributes
     // )
+    if (!createdUser.email) {
+      return { error: 'Failed to create user. Please try again.' }
+    }
+
+    const emailVerificationRequest = await createEmailVerificationRequest(
+      createdUser.id,
+      createdUser.email
+    )
+    if (!emailVerificationRequest) {
+      return {
+        error: 'Failed to create email verification request. Please try again.',
+      }
+    }
+    sendVerificationEmail(
+      emailVerificationRequest.email,
+      emailVerificationRequest.code
+    )
+    setEmailVerificationRequestCookie(emailVerificationRequest)
+
+    const sessionFlags: SessionFlags = {
+      twoFactorVerified: false,
+    }
 
     const sessionToken = generateSessionToken()
-    const session = await createSession(sessionToken, createdUser.id)
+    const session = await createSession(
+      sessionToken,
+      createdUser.id,
+      sessionFlags
+    )
     setSessionTokenCookie(sessionToken, session.expiresAt)
 
+    // TO DO adjust checkout in new email + password flow
     const redirectTo = formData.get('redirect') as string | null
     if (redirectTo === 'checkout') {
       const priceId = formData.get('priceId') as string
@@ -177,7 +269,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     }
   }
 
-  redirect('/dashboard')
+  redirect('/2fa/setup')
 })
 
 export async function signOut() {
@@ -464,7 +556,7 @@ export const requestPasswordReset = validatedAction(
 
     const userId = user[0].id
     const verificationToken = await createPasswordResetToken(userId)
-    const verificationLink = `${process.env.BASE_URL}/reset-password/${verificationToken}`
+    const verificationLink = `${process.env.BASE_URL}/reset-pass-old/${verificationToken}`
 
     await sendPasswordResetToken(email, verificationLink)
 

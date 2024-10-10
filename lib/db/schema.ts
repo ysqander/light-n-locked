@@ -5,22 +5,54 @@ import {
   text,
   timestamp,
   integer,
+  boolean,
+  index,
+  customType,
 } from 'drizzle-orm/pg-core'
 import { relations } from 'drizzle-orm'
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }),
-  email: varchar('email', { length: 255 }).unique(),
-  passwordHash: text('password_hash'),
-  githubId: integer('github_id').unique(),
-  githubUsername: text('github_username'),
-  role: varchar('role', { length: 20 }).notNull().default('member'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at'),
-  deletionMethod: varchar('deletion_method', { length: 20 }),
+// Custom type for bytea
+const bytea = customType<{ data: Buffer | null }>({
+  dataType() {
+    return 'bytea'
+  },
+  toDriver(value: Buffer | null): Buffer | null {
+    return value
+  },
+  fromDriver(value: unknown): Buffer | null {
+    if (value instanceof Buffer) {
+      return value
+    }
+    if (value === null) {
+      return null
+    }
+    throw new Error('Invalid bytea value')
+  },
 })
+
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 100 }),
+    email: varchar('email', { length: 255 }).unique(),
+    emailVerified: boolean('email_verified').notNull().default(false),
+    totpKey: bytea('totp_key'),
+    recoveryCode: bytea('recovery_code').notNull(), // set up default for now
+    registered2FA: boolean('registered_2fa').notNull().default(false),
+    passwordHash: text('password_hash'),
+    githubId: integer('github_id').unique(),
+    githubUsername: text('github_username'),
+    role: varchar('role', { length: 20 }).notNull().default('member'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+    deletionMethod: varchar('deletion_method', { length: 20 }),
+  },
+  (table) => ({
+    emailIndex: index('email_idx').on(table.email),
+  })
+)
 
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
@@ -33,6 +65,40 @@ export const sessions = pgTable('sessions', {
     withTimezone: true,
     mode: 'date',
   }).notNull(),
+  twoFactorVerified: boolean('two_factor_verified').notNull().default(false),
+})
+
+export const emailVerificationRequests = pgTable(
+  'email_verification_requests',
+  {
+    id: text('id').primaryKey(),
+    userId: integer('user_id')
+      .references(() => users.id, {
+        onDelete: 'cascade',
+      })
+      .notNull(),
+    code: text('code').notNull(),
+    email: text('email').notNull(),
+    expiresAt: timestamp('expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }).notNull(),
+  }
+)
+
+export const passwordResetSessions = pgTable('password_reset_sessions', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  code: text('code').notNull(),
+  expiresAt: timestamp('expires_at', {
+    withTimezone: true,
+    mode: 'date',
+  }).notNull(),
+  twoFactorVerified: boolean('two_factor_verified').notNull().default(false),
+  emailVerified: boolean('email_verified').notNull().default(false),
 })
 
 export const passwordResetTokens = pgTable('password_reset_tokens', {

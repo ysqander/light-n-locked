@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation' // Import useParams to access URL parameters
-import { resetPassword } from '@/app/(account)/reset-password/[token]/actions' // Ensure correct import
+import { resetPassword } from '@/app/(account)/reset-pass-old/[token]/actions' // Ensure correct import
 import { useActionState, startTransition } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'

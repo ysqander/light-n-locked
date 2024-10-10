@@ -25,27 +25,32 @@ export const InvitationEmail: React.FC<InvitationEmailProps> = ({
   <Html>
     <Head />
     <Preview>You've been invited to join {teamName} on our platform</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Section style={box}>
-          <Text style={paragraph}>Hello,</Text>
-          <Text style={paragraph}>
+    <Body className="bg-background font-sans">
+      <Container className="bg-card mx-auto p-8 mb-16">
+        <Section className="px-12">
+          <Text className="text-foreground text-base leading-6">Hello,</Text>
+          <Text className="text-foreground text-base leading-6">
             You've been invited by {inviterName} to join the {teamName} team on
             our platform.
           </Text>
-          <Button pX={20} pY={12} style={btn} href={inviteUrl}>
+          <Button
+            href={inviteUrl}
+            className="bg-primary text-primary-foreground font-bold text-base py-3 px-5 rounded-md no-underline text-center block w-full"
+          >
             Join the team
           </Button>
-          <Text style={paragraph}>
+          <Text className="text-foreground text-base leading-6">
             If you don't want to accept this invitation, you can ignore this
             email. The invitation link will expire in 7 days.
           </Text>
-          <Hr style={hr} />
-          <Text style={footer}>
+          <Hr className="border-border my-5" />
+          <Text className="text-muted-foreground text-sm leading-5">
             If you're having trouble with the button above, copy and paste the
             URL below into your web browser:
           </Text>
-          <Text style={url}>{inviteUrl}</Text>
+          <Text className="text-primary text-sm leading-6 break-all">
+            {inviteUrl}
+          </Text>
         </Section>
       </Container>
     </Body>
@@ -53,59 +58,3 @@ export const InvitationEmail: React.FC<InvitationEmailProps> = ({
 )
 
 export default InvitationEmail
-
-// Styles
-const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily:
-    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
-}
-
-const container = {
-  backgroundColor: '#ffffff',
-  margin: '0 auto',
-  padding: '20px 0 48px',
-  marginBottom: '64px',
-}
-
-const box = {
-  padding: '0 48px',
-}
-
-const paragraph = {
-  color: '#525f7f',
-  fontSize: '16px',
-  lineHeight: '24px',
-  textAlign: 'left' as const,
-}
-
-const btn = {
-  backgroundColor: 'hsl(var(--primary))',
-  borderRadius: '5px',
-  color: '#fff',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'block',
-  width: '100%',
-}
-
-const hr = {
-  borderColor: '#e6ebf1',
-  margin: '20px 0',
-}
-
-const footer = {
-  color: '#8898aa',
-  fontSize: '12px',
-  lineHeight: '16px',
-}
-
-const url = {
-  color: '#556cd6',
-  fontSize: '14px',
-  lineHeight: '24px',
-  whiteSpace: 'nowrap',
-  wordBreak: 'break-all',
-}
