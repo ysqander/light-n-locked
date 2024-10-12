@@ -84,6 +84,11 @@ export const getCurrentSession = cache(
 export async function invalidateSession(sessionId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, sessionId))
 }
+
+export async function invalidateUserSessions(userId: number): Promise<void> {
+  await db.delete(sessions).where(eq(sessions.userId, userId))
+}
+
 export function setSessionAs2FAVerified(sessionId: string): void {
   db.update(sessions)
     .set({ twoFactorVerified: true })

@@ -1,8 +1,8 @@
 import { TwoFactorResetForm } from './components'
-
 import { getCurrentSession } from '@/lib/auth/diy'
 import { redirect } from 'next/navigation'
 import { globalGETRateLimit } from '@/lib/server/request'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default async function Page() {
   if (!globalGETRateLimit()) {
@@ -10,7 +10,7 @@ export default async function Page() {
   }
   const { session, user } = await getCurrentSession()
   if (session === null) {
-    return redirect('/login')
+    return redirect('/sign-in')
   }
   if (!user.emailVerified) {
     return redirect('/verify-email')
@@ -22,9 +22,22 @@ export default async function Page() {
     return redirect('/')
   }
   return (
-    <>
-      <h1>Recover your account</h1>
-      <TwoFactorResetForm />
-    </>
+    <div className="min-h-[100dvh] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <h1 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          Recover your account
+        </h1>
+      </div>
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <Card>
+          <CardHeader>
+            <CardTitle>Enter Recovery Code</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TwoFactorResetForm />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

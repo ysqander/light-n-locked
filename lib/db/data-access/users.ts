@@ -7,10 +7,26 @@ import {
   type NewUser,
   type NewTeam,
   type NewTeamMember,
+  type User,
 } from '@/lib/db/schema'
 import { eq, and, or, isNotNull, like, sql, isNull } from 'drizzle-orm'
 import { ActivityType } from '@/lib/db/schema'
 import { logActivity } from '@/lib/db/data-access/activity'
+
+// Define a type for the user attributes you want to return
+type UserResponse = Omit<
+  User,
+  | 'deletedAt'
+  | 'passwordHash'
+  | 'githubId'
+  | 'githubUsername'
+  | 'totpKey'
+  | 'recoveryCode'
+  | 'role'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'deletionMethod'
+>
 
 export async function createUserAndTeam(
   userData: Omit<NewUser, 'id'>,
@@ -103,6 +119,36 @@ export async function getUserWithTeamByEmail(email: string) {
     .limit(1)
 
   return result
+}
+
+export async function getUserByEmail(
+  email: string
+): Promise<UserResponse | null> {
+  const result = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name, // Using 'name' instead of 'username' as per your schema
+      emailVerified: users.emailVerified,
+      registered2FA: users.registered2FA,
+    })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1)
+
+  if (result.length === 0) {
+    return null
+  }
+
+  const user: UserResponse = {
+    id: result[0].id,
+    email: result[0].email,
+    name: result[0].name,
+    emailVerified: result[0].emailVerified,
+    registered2FA: result[0].registered2FA,
+  }
+
+  return user
 }
 
 export async function getUserWithTeam(userId: number) {
@@ -204,4 +250,17 @@ export async function listSoftDeletedUsers() {
     .from(users)
     .where(isNotNull(users.deletedAt))
     .orderBy(sql`"deletedAt" DESC`)
+}
+
+export async function setUserAsEmailVerifiedIfEmailMatches(
+  userId: number,
+  email: string
+): Promise<boolean> {
+  const result = await db
+    .update(users)
+    .set({ emailVerified: true })
+    .where(and(eq(users.id, userId), eq(users.email, email)))
+    .execute()
+
+  return result.count > 0 // Check if any rows were affected
 }

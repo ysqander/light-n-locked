@@ -60,51 +60,52 @@ export default function SecurityClientComponent({
 
   return (
     <>
-      {/* Password Reset Section */}
-      {!user.githubId && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>Reset Password</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form className="space-y-4" onSubmit={handleResetSubmit}>
-              <div>
-                <Label htmlFor="reset-password"> Email Address</Label>
-                <p>Enter the email you signed up with</p>
-                <Input
-                  id="reset-password"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  minLength={3}
-                  maxLength={255}
-                />
-              </div>
-              {resetState.error && (
-                <p className="text-red-500 text-sm">{resetState.error}</p>
+      {/* Request Password Reset Section */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Request Password Reset</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4" onSubmit={handleResetSubmit}>
+            <div>
+              <Label htmlFor="reset-password">Email Address</Label>
+              <p>
+                Enter the email you signed up with to receive a password reset
+                link
+              </p>
+              <Input
+                id="reset-password"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                minLength={3}
+                maxLength={255}
+              />
+            </div>
+            {resetState.error && (
+              <p className="text-red-500 text-sm">{resetState.error}</p>
+            )}
+            {resetState.success && (
+              <p className="text-green-500 text-sm">{resetState.success}</p>
+            )}
+            <Button
+              type="submit"
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+              disabled={isResetPending}
+            >
+              {isResetPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                'Send Reset Link'
               )}
-              {resetState.success && (
-                <p className="text-green-500 text-sm">{resetState.success}</p>
-              )}
-              <Button
-                type="submit"
-                className="bg-blue-500 hover:bg-blue-600 text-white"
-                disabled={isResetPending}
-              >
-                {isResetPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  'Send Reset Link'
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Delete Account Section */}
       <Card>

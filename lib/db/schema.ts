@@ -12,7 +12,7 @@ import {
 import { relations } from 'drizzle-orm'
 
 // Custom type for bytea
-const bytea = customType<{ data: Buffer | null }>({
+export const bytea = customType<{ data: Buffer | null }>({
   dataType() {
     return 'bytea'
   },
@@ -87,7 +87,7 @@ export const emailVerificationRequests = pgTable(
 )
 
 export const passwordResetSessions = pgTable('password_reset_sessions', {
-  id: serial('id').primaryKey(),
+  id: text('id').primaryKey(),
   userId: integer('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
