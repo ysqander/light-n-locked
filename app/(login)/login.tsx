@@ -126,17 +126,18 @@ export function LoginComponent({
               />
             </div>
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <Link
-                href="/forgot-password"
-                className="font-medium text-orange-600 hover:text-orange-500"
-              >
-                Forgot your password?
-              </Link>
+          {mode === 'signin' && (
+            <div className="flex items-center justify-between">
+              <div className="text-sm">
+                <Link
+                  href="/forgot-password"
+                  className="font-medium text-orange-600 hover:text-orange-500"
+                >
+                  Forgot your password?
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
 
           {state?.error && (
             <div className="text-red-500 text-sm">{state.error}</div>

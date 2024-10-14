@@ -1,10 +1,11 @@
 'use server'
 
+import { z } from 'zod'
+import { validatedAction } from '@/lib/auth/middleware'
 import { verifyPasswordStrength } from '@/lib/server/password'
 import {
-  deletePasswordResetSessionTokenCookie,
-  invalidateUserPasswordResetSessions,
   validatePasswordResetSessionRequest,
+  invalidateUserPasswordResetSessions,
 } from '@/lib/server/password-reset'
 import {
   createSession,
@@ -13,70 +14,64 @@ import {
   setSessionTokenCookie,
 } from '@/lib/auth/diy'
 import { updateUserPassword } from '@/lib/server/user'
-import { redirect } from 'next/navigation'
 import { globalPOSTRateLimit } from '@/lib/server/request'
 
-import type { SessionFlags } from '@/lib/auth/diy'
+const resetPasswordSchema = z.object({
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+})
 
-export async function resetPasswordAction(
-  _prev: ActionResult,
-  formData: FormData
-): Promise<ActionResult> {
-  if (!globalPOSTRateLimit()) {
-    return {
-      message: 'Too many requests',
+export const resetPasswordAction = validatedAction(
+  resetPasswordSchema,
+  async (data) => {
+    if (!globalPOSTRateLimit()) {
+      return {
+        error: 'Too many requests',
+      }
     }
-  }
-  const { session: passwordResetSession, user } =
-    await validatePasswordResetSessionRequest()
-  if (passwordResetSession === null) {
-    return {
-      message: 'Not authenticated',
-    }
-  }
-  if (!passwordResetSession.emailVerified) {
-    return {
-      message: 'Forbidden',
-    }
-  }
-  if (user.registered2FA && !passwordResetSession.twoFactorVerified) {
-    return {
-      message: 'Forbidden',
-    }
-  }
 
-  const password = formData.get('password')
-  if (typeof password !== 'string') {
-    return {
-      message: 'Invalid or missing fields',
+    const { session: passwordResetSession, user } =
+      await validatePasswordResetSessionRequest()
+    if (passwordResetSession === null) {
+      return {
+        error: 'Not authenticated',
+      }
     }
-  }
-
-  const strongPassword = await verifyPasswordStrength(password)
-  if (!strongPassword) {
-    return {
-      message: 'Weak password',
+    if (!passwordResetSession.emailVerified) {
+      return {
+        error: 'Forbidden',
+      }
     }
-  }
-  invalidateUserPasswordResetSessions(passwordResetSession.userId)
-  invalidateUserSessions(passwordResetSession.userId)
-  await updateUserPassword(passwordResetSession.userId, password)
+    if (user.registered2FA && !passwordResetSession.twoFactorVerified) {
+      return {
+        error: 'Forbidden',
+      }
+    }
 
-  const sessionFlags: SessionFlags = {
-    twoFactorVerified: passwordResetSession.twoFactorVerified,
-    oAuth2Verified: false,
-  }
-  const sessionToken = generateSessionToken()
-  const session = await createSession(
-    sessionToken,
-    passwordResetSession.userId,
-    sessionFlags
-  )
-  setSessionTokenCookie(sessionToken, session.expiresAt)
-  deletePasswordResetSessionTokenCookie()
-  return redirect('/dashboard')
-}
+    const { password } = data
 
-interface ActionResult {
-  message: string
-}
+    const strongPassword = await verifyPasswordStrength(password)
+    if (!strongPassword) {
+      return {
+        error: 'Weak password',
+      }
+    }
+
+    invalidateUserPasswordResetSessions(passwordResetSession.userId)
+    invalidateUserSessions(passwordResetSession.userId)
+    await updateUserPassword(passwordResetSession.userId, password)
+
+    const sessionFlags = {
+      twoFactorVerified: passwordResetSession.twoFactorVerified,
+      oAuth2Verified: false,
+    }
+    const sessionToken = generateSessionToken()
+    const session = await createSession(
+      sessionToken,
+      passwordResetSession.userId,
+      sessionFlags
+    )
+    setSessionTokenCookie(sessionToken, session.expiresAt)
+
+    return { success: 'Password reset successful' }
+  }
+)

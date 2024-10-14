@@ -52,7 +52,7 @@ export default async function Page() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <Card>
           <CardHeader>
-            <CardTitle>Scan QR Code</CardTitle>
+            <CardTitle>Scan QR Code with your authenticator app</CardTitle>
           </CardHeader>
           <CardContent>
             <div

@@ -1,18 +1,25 @@
 'use client'
 
-import { useFormState } from 'react-dom'
+import { useActionState } from 'react'
 import { resetPasswordAction } from './actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-const initialState = {
-  message: '',
+type ActionState = {
+  error?: string
+  success?: string
 }
 
 export function PasswordResetForm() {
-  const [state, action] = useFormState(resetPasswordAction, initialState)
+  const [resetState, resetAction, isResetPending] = useActionState<
+    ActionState,
+    FormData
+  >(resetPasswordAction, { error: '', success: '' })
+
+  const router = useRouter()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMismatch, setPasswordMismatch] = useState(false)
@@ -21,11 +28,18 @@ export function PasswordResetForm() {
     event.preventDefault()
     if (password === confirmPassword) {
       setPasswordMismatch(false)
-      action(new FormData(event.currentTarget))
+      const formData = new FormData(event.currentTarget)
+      resetAction(formData)
     } else {
       setPasswordMismatch(true)
     }
   }
+
+  useEffect(() => {
+    if (resetState.success) {
+      router.push('/dashboard')
+    }
+  }, [resetState.success, router])
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,11 +82,14 @@ export function PasswordResetForm() {
       {passwordMismatch && (
         <p className="text-sm text-destructive">Passwords do not match</p>
       )}
-      <Button type="submit" className="w-full">
-        Reset Password
+      <Button type="submit" className="w-full" disabled={isResetPending}>
+        {isResetPending ? 'Resetting...' : 'Reset Password'}
       </Button>
-      {state.message && (
-        <p className="mt-2 text-sm text-destructive">{state.message}</p>
+      {resetState.error && (
+        <p className="mt-2 text-sm text-destructive">{resetState.error}</p>
+      )}
+      {resetState.success && (
+        <p className="mt-2 text-sm text-green-600">{resetState.success}</p>
       )}
     </form>
   )
