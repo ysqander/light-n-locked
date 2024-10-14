@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { use } from 'react'
 import { User } from '@/lib/db/schema'
-// import { User, Session } from 'lucia'
 import { SessionValidationResult } from '@/lib/auth/diy'
 
 type UserContextType = {

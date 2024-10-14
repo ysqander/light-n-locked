@@ -1,7 +1,7 @@
 import { ForgotPasswordForm } from './components'
 import Link from 'next/link'
 import { globalGETRateLimit } from '@/lib/server/request'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 
 export default function Page() {
   if (!globalGETRateLimit()) {

@@ -1,5 +1,5 @@
 import { createUserAndTeam } from '@/lib/db/data-access/users'
-import { github, lucia } from '@/lib/auth/lucia'
+import { github } from '@/lib/auth/diy'
 import { cookies } from 'next/headers'
 import { OAuth2RequestError } from 'arctic'
 import { db } from '@/lib/db/drizzle'

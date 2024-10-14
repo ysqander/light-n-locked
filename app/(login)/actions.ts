@@ -27,12 +27,10 @@ import { redirect } from 'next/navigation'
 import { cookies, headers } from 'next/headers'
 import { createCheckoutSession } from '@/lib/payments/stripe'
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware'
-import { lucia } from '@/lib/auth/lucia'
 import { verify } from '@node-rs/argon2'
 import { TimeSpan, createDate } from 'oslo'
 import { sha256 } from 'oslo/crypto'
 import { encodeHex } from 'oslo/encoding'
-import { generateIdFromEntropySize } from 'lucia'
 import { isWithinExpirationDate } from '@/lib/utils/dateUtils' // Ensure this import is present
 import { Resend } from 'resend'
 import { createUserAndTeam, getUserWithTeam } from '@/lib/db/data-access/users'
@@ -520,30 +518,6 @@ export const inviteTeamMember = validatedActionWithUser(
     return { success: 'Invitation sent successfully' }
   }
 )
-
-// Function to create a password reset token
-async function createPasswordResetToken(userId: number): Promise<string> {
-  //Invalidate existing tokens
-  await db
-    .delete(passwordResetTokens)
-    .where(eq(passwordResetTokens.userId, userId))
-    .execute()
-
-  const tokenId = generateIdFromEntropySize(25) // 40 characters
-  const tokenHash = encodeHex(await sha256(new TextEncoder().encode(tokenId)))
-  const expiresAt = createDate(new TimeSpan(2, 'h'))
-
-  await db
-    .insert(passwordResetTokens)
-    .values({
-      tokenHash,
-      userId,
-      expiresAt,
-    })
-    .execute()
-
-  return tokenId
-}
 
 // Action to request a password reset
 export const requestPasswordReset = validatedAction(

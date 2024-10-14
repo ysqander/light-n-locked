@@ -7,24 +7,17 @@ import { Label } from '@/components/ui/label'
 import { Trash2, Loader2 } from 'lucide-react'
 import { startTransition, useActionState } from 'react'
 import { deleteAccount } from '@/app/(login)/actions'
-import { forgotPasswordAction } from '@/app/forgot-password/actions'
+import { forgotPasswordAction } from '@/app/(2FA auth)/forgot-password/actions'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { User } from '@/lib/db/schema'
 
 type ActionState = {
   error?: string
   success?: string
 }
 
-interface SecurityClientComponentProps {
-  user: User
-}
-
-export default function SecurityClientComponent({
-  user,
-}: SecurityClientComponentProps) {
+export default function SecurityClientComponent() {
   const [resetState, resetAction, isResetPending] = useActionState<
     ActionState,
     FormData

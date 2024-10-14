@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TeamDataWithMembers } from '@/lib/db/schema' // removed User object from db and replaced with the Lucia one
+import { TeamDataWithMembers } from '@/lib/db/schema'
 import { getTeamForUser } from '@/lib/db/data-access/teams'
 import { redirect } from 'next/navigation'
 import { User } from '@/lib/db/schema'
