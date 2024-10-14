@@ -102,13 +102,6 @@ export async function GET(request: Request): Promise<Response> {
         const { user: createdUser, team: createdTeam } =
           await createUserAndTeam(newUser, inviteId)
 
-        // const session = await lucia.createSession(createdUser.id, {})
-        // const sessionCookie = lucia.createSessionCookie(session.id)
-        // cookies().set(
-        //   sessionCookie.name,
-        //   sessionCookie.value,
-        //   sessionCookie.attributes
-        // )
         const sessionFlags: SessionFlags = {
           twoFactorVerified: false,
           oAuth2Verified: true,
@@ -159,13 +152,6 @@ export async function GET(request: Request): Promise<Response> {
         })
       }
 
-      // const session = await lucia.createSession(foundUser.id, {})
-      // const sessionCookie = lucia.createSessionCookie(session.id)
-      // cookies().set(
-      //   sessionCookie.name,
-      //   sessionCookie.value,
-      //   sessionCookie.attributes
-      // )
       const sessionFlags: SessionFlags = {
         twoFactorVerified: false,
         oAuth2Verified: true,
