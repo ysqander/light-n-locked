@@ -8,6 +8,7 @@ import {
   type NewTeam,
   type NewTeamMember,
   type User,
+  usersWithDerived,
 } from '@/lib/db/schema'
 import { eq, and, or, isNotNull, like, sql, isNull } from 'drizzle-orm'
 import { ActivityType } from '@/lib/db/schema'
@@ -26,7 +27,9 @@ type UserResponse = Omit<
   | 'createdAt'
   | 'updatedAt'
   | 'deletionMethod'
->
+> & {
+  registered2FA: boolean
+}
 
 export async function createUserAndTeam(
   userData: Omit<NewUser, 'id'>,
@@ -128,9 +131,9 @@ export async function getUserByEmail(
     .select({
       id: users.id,
       email: users.email,
-      name: users.name, // Using 'name' instead of 'username' as per your schema
+      name: users.name,
       emailVerified: users.emailVerified,
-      registered2FA: users.registered2FA,
+      registered2FA: usersWithDerived.registered2FA,
     })
     .from(users)
     .where(eq(users.email, email))
@@ -140,15 +143,7 @@ export async function getUserByEmail(
     return null
   }
 
-  const user: UserResponse = {
-    id: result[0].id,
-    email: result[0].email,
-    name: result[0].name,
-    emailVerified: result[0].emailVerified,
-    registered2FA: result[0].registered2FA,
-  }
-
-  return user
+  return result[0]
 }
 
 export async function getUserWithTeam(userId: number) {
@@ -183,31 +178,37 @@ export async function getUserWithTeamByGithubId(githubId: number) {
 }
 
 export async function softDeleteUser(userId: number) {
-  await db
-    .update(users)
-    .set({
-      deletedAt: sql`CURRENT_TIMESTAMP`,
-      email: sql`CASE 
-        WHEN email IS NOT NULL THEN CONCAT('deleted-', ${userId}::text, '-', SUBSTRING(email FROM 1 FOR 8))
-        ELSE NULL
-      END`,
-      name: null,
-      passwordHash: null,
-      githubId: sql`CASE 
-        WHEN github_id IS NOT NULL THEN CONCAT('deleted-', ${userId}::text, '-', SUBSTRING(github_id FROM 1 FOR 8))
-        ELSE NULL
-      END`,
-      githubUsername: null,
-      deletionMethod: sql`CASE 
-        WHEN email IS NOT NULL THEN 'EMAIL'
-        WHEN github_id IS NOT NULL THEN 'GITHUB'
-        ELSE 'UNKNOWN'
-      END`,
-    })
-    .where(eq(users.id, userId))
-
-  // Remove user from team
-  await db.delete(teamMembers).where(eq(teamMembers.userId, userId))
+  console.log('Soft deleting user:', userId)
+  try {
+    const result = await db
+      .update(users)
+      .set({
+        deletedAt: sql`CURRENT_TIMESTAMP`,
+        deletionMethod: 'soft_delete',
+        email: sql`CASE 
+          WHEN ${users.email} IS NOT NULL 
+          THEN CONCAT('deleted_', ${users.id}::text, '_', ${users.email})
+          ELSE ${users.email}
+        END`,
+        githubId: sql`CASE 
+          WHEN ${users.githubId} IS NOT NULL 
+          THEN CONCAT('deleted_', ${users.id}::text, '_', ${users.githubId}::text)::integer
+          ELSE ${users.githubId}
+        END`,
+        githubUsername: sql`CASE 
+          WHEN ${users.githubUsername} IS NOT NULL 
+          THEN CONCAT('deleted_', ${users.id}::text, '_', ${users.githubUsername})
+          ELSE ${users.githubUsername}
+        END`,
+      })
+      .where(eq(users.id, userId))
+      .returning()
+    console.log('Soft delete result:', result)
+    return result[0]
+  } catch (error) {
+    console.error('Error in softDeleteUser:', error)
+    throw error
+  }
 }
 
 export async function findSoftDeletedUser(identifier: string) {
@@ -217,8 +218,9 @@ export async function findSoftDeletedUser(identifier: string) {
     .where(
       and(
         or(
-          like(users.email, `deleted-%-%${identifier}%`),
-          like(users.githubId, `deleted-%-%${identifier}%`)
+          like(users.email, `deleted_%_${identifier}%`),
+          like(users.githubUsername, `deleted_%_${identifier}%`),
+          sql`${users.githubId}::text LIKE ${'deleted_%_' + identifier + '%'}`
         ),
         isNotNull(users.deletedAt)
       )
@@ -230,15 +232,22 @@ export async function findSoftDeletedUser(identifier: string) {
 
 export async function restoreSoftDeletedUser(
   userId: number,
-  newEmail: string,
-  newGithubId?: number
+  newEmail?: string,
+  newGithubId?: number,
+  newGithubUsername?: string
 ) {
   await db
     .update(users)
     .set({
       deletedAt: null,
-      email: newEmail,
-      githubId: newGithubId || null,
+      email:
+        newEmail || sql`SUBSTRING(${users.email} FROM '^deleted_[0-9]+_(.*)$')`,
+      githubId:
+        newGithubId ||
+        sql`NULLIF(SUBSTRING(${users.githubId}::text FROM '^deleted_[0-9]+_(.*)$'), '')::integer`,
+      githubUsername:
+        newGithubUsername ||
+        sql`SUBSTRING(${users.githubUsername} FROM '^deleted_[0-9]+_(.*)$')`,
       deletionMethod: null,
     })
     .where(eq(users.id, userId))
@@ -263,4 +272,17 @@ export async function setUserAsEmailVerifiedIfEmailMatches(
     .execute()
 
   return result.count > 0 // Check if any rows were affected
+}
+
+export async function updateUserEmailAndSetEmailAsVerified(
+  userId: number,
+  email: string
+): Promise<void> {
+  await db
+    .update(users)
+    .set({
+      email: email,
+      emailVerified: true,
+    })
+    .where(eq(users.id, userId))
 }

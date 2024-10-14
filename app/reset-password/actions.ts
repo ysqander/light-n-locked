@@ -64,6 +64,7 @@ export async function resetPasswordAction(
 
   const sessionFlags: SessionFlags = {
     twoFactorVerified: passwordResetSession.twoFactorVerified,
+    oAuth2Verified: false,
   }
   const sessionToken = generateSessionToken()
   const session = await createSession(
@@ -73,7 +74,7 @@ export async function resetPasswordAction(
   )
   setSessionTokenCookie(sessionToken, session.expiresAt)
   deletePasswordResetSessionTokenCookie()
-  return redirect('/')
+  return redirect('/dashboard')
 }
 
 interface ActionResult {

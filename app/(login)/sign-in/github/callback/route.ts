@@ -13,6 +13,9 @@ import {
   setSessionTokenCookie,
 } from '@/lib/auth/diy'
 import { getNestedProperty } from '@/lib/utils/parser'
+import { SessionFlags } from '@/lib/auth/diy'
+import { encrypt } from '@/lib/server/encryption'
+import { generateRandomRecoveryCode } from '@/lib/utils/codeGen'
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)
@@ -83,12 +86,16 @@ export async function GET(request: Request): Promise<Response> {
     const userWithTeam = await getUserWithTeamByGithubId(githubUserId)
 
     if (userWithTeam.length === 0) {
+      const recoveryCode = generateRandomRecoveryCode()
+      const encryptedRecoveryCode = encrypt(recoveryCode)
+
       // Create new user logging in with GitHub
       const newUser: NewUser = {
         githubId: githubUserId,
         githubUsername: githubUsername,
         email: email,
-        role: 'owner', // Default role, will be overridden if there's an invitation
+        role: 'owner', // Default role, will be overridden if there's an invitation,
+        recoveryCode: encryptedRecoveryCode,
       }
 
       try {
@@ -102,9 +109,16 @@ export async function GET(request: Request): Promise<Response> {
         //   sessionCookie.value,
         //   sessionCookie.attributes
         // )
-
+        const sessionFlags: SessionFlags = {
+          twoFactorVerified: false,
+          oAuth2Verified: true,
+        }
         const sessionToken = generateSessionToken()
-        const session = await createSession(sessionToken, createdUser.id)
+        const session = await createSession(
+          sessionToken,
+          createdUser.id,
+          sessionFlags
+        )
         setSessionTokenCookie(sessionToken, session.expiresAt)
 
         // Handle checkout redirection for new users
@@ -152,9 +166,17 @@ export async function GET(request: Request): Promise<Response> {
       //   sessionCookie.value,
       //   sessionCookie.attributes
       // )
+      const sessionFlags: SessionFlags = {
+        twoFactorVerified: false,
+        oAuth2Verified: true,
+      }
 
       const sessionToken = generateSessionToken()
-      const session = await createSession(sessionToken, foundUser.id)
+      const session = await createSession(
+        sessionToken,
+        foundUser.id,
+        sessionFlags
+      )
       setSessionTokenCookie(sessionToken, session.expiresAt)
 
       // Handle checkout for existing users

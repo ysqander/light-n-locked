@@ -1,5 +1,5 @@
 import { db } from '@/lib/db/drizzle'
-import { decryptToString, encryptString } from '@/lib/server/encryption'
+import { decrypt, encrypt } from '@/lib/server/encryption'
 import { ExpiringTokenBucket } from '@/lib/server/rate-limit'
 import { generateRandomRecoveryCode } from '@/lib/utils/codeGen'
 import { users, sessions, bytea } from '@/lib/db/schema'
@@ -26,15 +26,14 @@ export async function resetUser2FAWithRecoveryCode(
     return false
   }
   const encryptedRecoveryCode = row.recoveryCode
-  const userRecoveryCode = decryptToString(
-    new Uint8Array(encryptedRecoveryCode)
-  )
+
+  const userRecoveryCode = decrypt(encryptedRecoveryCode)
   if (recoveryCode !== userRecoveryCode) {
     return false
   }
 
   const newRecoveryCode = generateRandomRecoveryCode()
-  const encryptedNewRecoveryCode = encryptString(newRecoveryCode)
+  const encryptedNewRecoveryCode = encrypt(newRecoveryCode)
 
   const updateResult = await db.transaction(async (tx) => {
     // Update sessions
@@ -47,7 +46,7 @@ export async function resetUser2FAWithRecoveryCode(
     const result = await tx
       .update(users)
       .set({
-        recoveryCode: Buffer.from(encryptedNewRecoveryCode),
+        recoveryCode: encryptedNewRecoveryCode,
         totpKey: null,
       })
       .where(
@@ -58,14 +57,4 @@ export async function resetUser2FAWithRecoveryCode(
   })
 
   return updateResult.length > 0
-
-  // Old SQLite queries (for reference):
-  // db.execute('UPDATE session SET two_factor_verified = 0 WHERE user_id = ?', [
-  //   userId,
-  // ])
-  // const result = db.execute(
-  //   'UPDATE user SET recovery_code = ?, totp_key = NULL WHERE id = ? AND recovery_code = ?',
-  //   [encryptedNewRecoveryCode, userId, encryptedRecoveryCode]
-  // )
-  // return result.changes > 0
 }

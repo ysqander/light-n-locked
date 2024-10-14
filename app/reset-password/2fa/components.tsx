@@ -32,7 +32,7 @@ export function PasswordResetTOTPForm() {
           <div>
             <Label
               htmlFor="form-totp.code"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-foreground"
             >
               TOTP Code
             </Label>
@@ -41,18 +41,15 @@ export function PasswordResetTOTPForm() {
               name="code"
               type="text"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+              className="mt-1 block w-full"
               placeholder="Enter your TOTP code"
             />
           </div>
-          <Button
-            type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
+          <Button type="submit" className="w-full">
             Verify
           </Button>
           {state.message && (
-            <p className="mt-2 text-sm text-red-600">{state.message}</p>
+            <p className="mt-2 text-sm text-destructive">{state.message}</p>
           )}
         </form>
       </CardContent>
@@ -81,7 +78,7 @@ export function PasswordResetRecoveryCodeForm() {
           <div>
             <Label
               htmlFor="form-recovery-code.code"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-foreground"
             >
               Recovery Code
             </Label>
@@ -90,18 +87,15 @@ export function PasswordResetRecoveryCodeForm() {
               name="code"
               type="text"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+              className="mt-1 block w-full"
               placeholder="Enter your recovery code"
             />
           </div>
-          <Button
-            type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
+          <Button type="submit" className="w-full">
             Verify
           </Button>
           {state.message && (
-            <p className="mt-2 text-sm text-red-600">{state.message}</p>
+            <p className="mt-2 text-sm text-destructive">{state.message}</p>
           )}
         </form>
       </CardContent>

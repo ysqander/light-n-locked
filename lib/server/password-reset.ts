@@ -3,7 +3,7 @@ import { encodeHexLowerCase } from '@oslojs/encoding'
 import { generateRandomOTP } from '@/lib/utils/codeGen'
 import { sha256 } from '@oslojs/crypto/sha2'
 import { cookies } from 'next/headers'
-import { passwordResetSessions, users } from '@/lib/db/schema'
+import { passwordResetSessions, usersWithDerived, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { resend } from '@/lib/utils/resend'
 import { PasswordResetEmail } from '@/components/PasswordResetEmail'
@@ -48,9 +48,9 @@ export async function validatePasswordResetSessionToken(
       user: {
         id: users.id,
         email: users.email,
-        username: users.name,
+        name: users.name,
         emailVerified: users.emailVerified,
-        registered2FA: users.registered2FA,
+        registered2FA: usersWithDerived.registered2FA,
       },
     })
     .from(passwordResetSessions)
@@ -72,7 +72,10 @@ export async function validatePasswordResetSessionToken(
     return { session: null, user: null }
   }
 
-  return { session, user: user as Partial<User> }
+  return {
+    session,
+    user: user as Partial<User>,
+  }
 }
 
 export async function setPasswordResetSessionAsEmailVerified(

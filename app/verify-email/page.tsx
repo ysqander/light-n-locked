@@ -24,14 +24,25 @@ export default async function Page() {
     return redirect('/')
   }
   return (
-    <>
-      <h1>Verify your email address</h1>
-      <p>
-        We sent an 8-digit code to {verificationRequest?.email ?? user.email}.
-      </p>
-      <EmailVerificationForm />
-      <ResendEmailVerificationCodeForm />
-      <Link href="/settings">Change your email</Link>
-    </>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8 space-y-6">
+        <h1 className="text-2xl font-bold text-center text-gray-800">
+          Verify your email address
+        </h1>
+        <p className="text-center text-gray-600">
+          We sent an 8-digit code to {verificationRequest?.email ?? user.email}.
+        </p>
+        <EmailVerificationForm />
+        <div className="flex flex-col items-center space-y-4">
+          <ResendEmailVerificationCodeForm />
+          <Link
+            href="/settings"
+            className="text-sm text-orange-600 hover:text-orange-500 transition-colors"
+          >
+            Change your email
+          </Link>
+        </div>
+      </div>
+    </div>
   )
 }

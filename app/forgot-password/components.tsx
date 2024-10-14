@@ -37,10 +37,10 @@ export function ForgotPasswordForm() {
   }, [state.success])
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto mt-6">
       <CardHeader>
         <CardTitle className="text-2xl font-bold text-center">
-          Forgot Password
+          Get Reset Link
         </CardTitle>
       </CardHeader>
       <CardContent>

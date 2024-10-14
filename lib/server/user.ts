@@ -1,8 +1,9 @@
-import { decrypt, decryptToString, encrypt } from '@/lib/server/encryption'
+import { decrypt, encrypt } from '@/lib/server/encryption'
 import { db } from '@/lib/db/drizzle'
 import { users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { hashPassword } from '@/lib/server/password'
+import { decodeBase64, encodeBase64 } from '@oslojs/encoding'
 
 export async function getUserTOTPKey(
   userId: number
@@ -21,36 +22,22 @@ export async function getUserTOTPKey(
   if (row.totpKey === null) {
     return null
   }
-  // Convert Buffer to Uint8Array
-  const uint8Array = new Uint8Array(
-    row.totpKey.buffer,
-    row.totpKey.byteOffset,
-    row.totpKey.length
-  )
 
-  return decrypt(uint8Array)
+  const decryptedKey = decrypt(row.totpKey)
+  return decodeBase64(decryptedKey)
 }
 
 export async function updateUserTOTPKey(
   userId: number,
   key: Uint8Array
 ): Promise<void> {
-  const encrypted = encrypt(key)
+  const base64Key = encodeBase64(key)
+  const encrypted = encrypt(base64Key)
 
-  // Convert the encrypted Uint8Array to a Buffer
-  const encryptedBuffer = Buffer.from(encrypted)
-
-  await db
-    .update(users)
-    .set({ totpKey: encryptedBuffer })
-    .where(eq(users.id, userId))
+  await db.update(users).set({ totpKey: encrypted }).where(eq(users.id, userId))
 }
 
 export async function getUserRecoverCode(userId: number): Promise<string> {
-  // const row = db.queryOne('SELECT recovery_code FROM user WHERE id = ?', [
-  //   userId,
-  // ])
-
   const result = await db
     .select({
       recoveryCode: users.recoveryCode,
@@ -61,7 +48,7 @@ export async function getUserRecoverCode(userId: number): Promise<string> {
   if (result.length === 0 || result[0].recoveryCode === null) {
     throw new Error('Invalid user ID')
   }
-  return decryptToString(new Uint8Array(result[0].recoveryCode))
+  return decrypt(result[0].recoveryCode)
 }
 
 export async function updateUserPassword(

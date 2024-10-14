@@ -60,7 +60,10 @@ import {
 import { SessionFlags } from '@/lib/auth/diy'
 import { RefillingTokenBucket, Throttler } from '@/lib/server/rate-limit'
 import { generateRandomRecoveryCode } from '@/lib/utils/codeGen'
-import { encryptString } from '@/lib/server/encryption'
+import { encrypt, decrypt } from '@/lib/server/encryption'
+import { createPasswordResetSession } from '@/lib/server/password-reset'
+import { getUserByEmail } from '@/lib/db/data-access/users'
+import { sendPasswordResetEmail } from '@/lib/server/password-reset'
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
@@ -127,6 +130,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
       try {
         const sessionFlags: SessionFlags = {
           twoFactorVerified: false,
+          oAuth2Verified: false,
         }
 
         const sessionToken = generateSessionToken()
@@ -201,12 +205,12 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
 
   const passwordHash = await hashPasswordArgon2(password)
   const recoveryCode = generateRandomRecoveryCode()
-  const encryptedRecoveryCode = encryptString(recoveryCode)
+  const encryptedRecoveryCode = encrypt(recoveryCode)
 
   const newUser: NewUser = {
     email,
     passwordHash,
-    recoveryCode: Buffer.from(encryptedRecoveryCode),
+    recoveryCode: encryptedRecoveryCode,
     role: 'owner', // Default role, will be overridden if there's an invitation
   }
 
@@ -216,16 +220,6 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
       inviteId
     )
 
-    // Create Lucia auth session
-    // const session = await lucia.createSession(createdUser.id, {})
-
-    // const sessionCookie = lucia.createSessionCookie(session.id)
-
-    // cookies().set(
-    //   sessionCookie.name,
-    //   sessionCookie.value,
-    //   sessionCookie.attributes
-    // )
     if (!createdUser.email) {
       return { error: 'Failed to create user. Please try again.' }
     }
@@ -247,6 +241,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
 
     const sessionFlags: SessionFlags = {
       twoFactorVerified: false,
+      oAuth2Verified: false,
     }
 
     const sessionToken = generateSessionToken()
@@ -307,46 +302,62 @@ const deleteAccountSchema = z.object({
 export const deleteAccount = validatedActionWithUser(
   deleteAccountSchema,
   async (data, _, questUser) => {
+    console.log('Starting deleteAccount function')
     const { user, session } = await getCurrentSession()
 
     if (!user || !session) {
+      console.log('User or session not found')
       return { error: 'Unauthorized' }
     }
 
-    // Confirmation text is already validated by Zod schema
+    console.log('User and session found', { userId: user.id })
 
     const userWithTeam = await getUserWithTeam(user.id)
+    console.log('User with team fetched', { userWithTeam })
 
     await logActivity(
       userWithTeam?.teamId,
       user.id,
       ActivityType.DELETE_ACCOUNT
     )
+    console.log('Activity logged')
 
     // Soft delete
-    await softDeleteUser(user.id)
-
-    if (userWithTeam?.teamId) {
-      await db
-        .delete(teamMembers)
-        .where(
-          and(
-            eq(teamMembers.userId, user.id),
-            eq(teamMembers.teamId, userWithTeam.teamId)
-          )
-        )
+    try {
+      await softDeleteUser(user.id)
+      console.log('User soft deleted')
+    } catch (error) {
+      console.error('Error during soft delete:', error)
+      return { error: 'Failed to delete account' }
     }
 
-    // await lucia.invalidateSession(session.id)
-    // const sessionCookie = lucia.createBlankSessionCookie()
-    // cookies().set(
-    //   sessionCookie.name,
-    //   sessionCookie.value,
-    //   sessionCookie.attributes
-    // )
+    if (userWithTeam?.teamId) {
+      try {
+        await db
+          .delete(teamMembers)
+          .where(
+            and(
+              eq(teamMembers.userId, user.id),
+              eq(teamMembers.teamId, userWithTeam.teamId)
+            )
+          )
+        console.log('Team member deleted')
+      } catch (error) {
+        console.error('Error deleting team member:', error)
+        return { error: 'Failed to remove from team' }
+      }
+    }
 
-    invalidateSession(session.id)
-    deleteSessionTokenCookie()
+    try {
+      await invalidateSession(session.id)
+      deleteSessionTokenCookie()
+      console.log('Session invalidated and cookie deleted')
+    } catch (error) {
+      console.error('Error invalidating session:', error)
+      return { error: 'Failed to sign out' }
+    }
+
+    console.log('Account deletion process completed successfully')
     return { success: 'Account deleted successfully.' }
   }
 )
@@ -540,44 +551,28 @@ export const requestPasswordReset = validatedAction(
     email: z.string().email(),
   }),
   async (data) => {
+    if (!globalPOSTRateLimit()) {
+      return { error: 'Too many requests. Please try again later.' }
+    }
+
     const { email } = data
 
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1)
-      .execute()
-
-    if (user.length === 0) {
-      // respond with a generic message to avoid email enumeration
-      return { success: 'If the email is valid, a reset link has been sent.' }
+    const user = await getUserByEmail(email)
+    if (!user) {
+      // Don't reveal if the email exists or not
+      return {
+        success:
+          'If an account exists for this email, a reset link has been sent.',
+      }
     }
 
-    const userId = user[0].id
-    const verificationToken = await createPasswordResetToken(userId)
-    const verificationLink = `${process.env.BASE_URL}/reset-pass-old/${verificationToken}`
+    const token = generateSessionToken() // Use generateSessionToken from diy.ts
+    const session = await createPasswordResetSession(token, user.id, email)
+    await sendPasswordResetEmail(email, session.code)
 
-    await sendPasswordResetToken(email, verificationLink)
-
-    return { success: 'If the email is valid, a reset link has been sent.' }
+    return {
+      success:
+        'If an account exists for this email, a reset link has been sent.',
+    }
   }
 )
-async function sendPasswordResetToken(email: string, verificationLink: string) {
-  try {
-    const { data, error } = await resend.emails.send({
-      from: 'noreply@nexusscholar.org',
-      to: email,
-      subject: 'Password Reset Request',
-      react: `<p>Click <a href="${verificationLink}">here</a> to reset your password.</p>`,
-    })
-
-    if (error) {
-      return { error: 'Failed to send password reset email' }
-    }
-
-    return { success: 'Password reset email sent' }
-  } catch (error) {
-    return { error: 'Failed to send password reset email' }
-  }
-}

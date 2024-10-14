@@ -9,7 +9,7 @@ import {
   index,
   customType,
 } from 'drizzle-orm/pg-core'
-import { relations } from 'drizzle-orm'
+import { relations, sql } from 'drizzle-orm'
 
 // Custom type for bytea
 export const bytea = customType<{ data: Buffer | null }>({
@@ -37,9 +37,9 @@ export const users = pgTable(
     name: varchar('name', { length: 100 }),
     email: varchar('email', { length: 255 }).unique(),
     emailVerified: boolean('email_verified').notNull().default(false),
-    totpKey: bytea('totp_key'),
-    recoveryCode: bytea('recovery_code').notNull(), // set up default for now
+    totpKey: text('totp_key'),
     registered2FA: boolean('registered_2fa').notNull().default(false),
+    recoveryCode: text('recovery_code').notNull(), // set up default for now
     passwordHash: text('password_hash'),
     githubId: integer('github_id').unique(),
     githubUsername: text('github_username'),
@@ -54,6 +54,15 @@ export const users = pgTable(
   })
 )
 
+// Create a custom selector for users that includes the derived registered2FA field
+export const usersWithDerived = {
+  ...users,
+  registered2FA:
+    sql<boolean>`CASE WHEN ${users.totpKey} IS NOT NULL THEN true ELSE false END`.as(
+      'registered2FA'
+    ),
+}
+
 export const sessions = pgTable('sessions', {
   id: text('id').primaryKey(),
   userId: integer('user_id')
@@ -66,6 +75,7 @@ export const sessions = pgTable('sessions', {
     mode: 'date',
   }).notNull(),
   twoFactorVerified: boolean('two_factor_verified').notNull().default(false),
+  oAuth2Verified: boolean('o_auth2_verified').notNull().default(false),
 })
 
 export const emailVerificationRequests = pgTable(
@@ -212,7 +222,7 @@ export const passwordResetTokensRelations = relations(
   })
 )
 
-export type User = typeof users.$inferSelect
+export type User = typeof users.$inferSelect & { registered2FA: boolean }
 export type NewUser = typeof users.$inferInsert
 export type Session = typeof sessions.$inferSelect
 export type Team = typeof teams.$inferSelect

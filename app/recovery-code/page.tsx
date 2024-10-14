@@ -46,7 +46,7 @@ export default async function Page() {
             </p>
             <div className="mt-6">
               <Link
-                href="/"
+                href="/dashboard"
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-full shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
               >
                 Next

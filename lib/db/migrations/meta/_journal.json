@@ -22,6 +22,20 @@
       "when": 1728304487891,
       "tag": "0002_careful_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1728901944154,
+      "tag": "0003_sudden_ikaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1728912638313,
+      "tag": "0004_normal_starjammers",
+      "breakpoints": true
     }
   ]
 }

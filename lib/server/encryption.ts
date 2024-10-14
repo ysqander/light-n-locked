@@ -1,26 +1,23 @@
-import { decodeBase64 } from '@oslojs/encoding'
+import { decodeBase64, encodeBase64 } from '@oslojs/encoding'
 import { createCipheriv, createDecipheriv } from 'crypto'
 import { DynamicBuffer } from '@oslojs/binary'
 
 const key = decodeBase64(process.env.ENCRYPTION_KEY ?? '')
 
-export function encrypt(data: Uint8Array): Uint8Array {
+export function encrypt(data: string): string {
   const iv = new Uint8Array(16)
   crypto.getRandomValues(iv)
   const cipher = createCipheriv('aes-128-gcm', key, iv)
   const encrypted = new DynamicBuffer(0)
   encrypted.write(iv)
-  encrypted.write(new Uint8Array(cipher.update(data)))
+  encrypted.write(new Uint8Array(cipher.update(new TextEncoder().encode(data))))
   encrypted.write(new Uint8Array(cipher.final()))
   encrypted.write(new Uint8Array(cipher.getAuthTag()))
-  return encrypted.bytes()
+  return encodeBase64(encrypted.bytes())
 }
 
-export function encryptString(data: string): Uint8Array {
-  return encrypt(new TextEncoder().encode(data))
-}
-
-export function decrypt(encrypted: Uint8Array): Uint8Array {
+export function decrypt(encryptedBase64: string): string {
+  const encrypted = decodeBase64(encryptedBase64)
   if (encrypted.byteLength < 33) {
     throw new Error('Invalid data')
   }
@@ -33,9 +30,5 @@ export function decrypt(encrypted: Uint8Array): Uint8Array {
     )
   )
   decrypted.write(new Uint8Array(decipher.final()))
-  return decrypted.bytes()
-}
-
-export function decryptToString(data: Uint8Array): string {
-  return new TextDecoder().decode(decrypt(data))
+  return new TextDecoder().decode(decrypted.bytes())
 }

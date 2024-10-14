@@ -1,5 +1,11 @@
 import { sha256 } from '@oslojs/crypto/sha2'
-import { User, Session, sessions, users } from '@/lib/db/schema'
+import {
+  User,
+  Session,
+  sessions,
+  users,
+  usersWithDerived,
+} from '@/lib/db/schema'
 import {
   encodeBase32LowerCaseNoPadding,
   encodeHexLowerCase,
@@ -31,6 +37,7 @@ export async function createSession(
     userId,
     expiresAt: new Date(Date.now() + SESSION_TOKEN_EXPIRY),
     twoFactorVerified: flags.twoFactorVerified,
+    oAuth2Verified: flags.oAuth2Verified,
   }
   await db.insert(sessions).values(session)
   return session
@@ -41,7 +48,10 @@ export async function validateSessionToken(
 ): Promise<SessionValidationResult> {
   const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)))
   const result = await db
-    .select({ user: users, session: sessions })
+    .select({
+      user: usersWithDerived,
+      session: sessions,
+    })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(eq(sessions.id, sessionId))
@@ -64,7 +74,11 @@ export async function validateSessionToken(
       .set({ expiresAt: session.expiresAt })
       .where(eq(sessions.id, session.id))
   }
-  return { session, user }
+
+  return {
+    session,
+    user,
+  }
 }
 
 export const getCurrentSession = cache(
@@ -89,8 +103,11 @@ export async function invalidateUserSessions(userId: number): Promise<void> {
   await db.delete(sessions).where(eq(sessions.userId, userId))
 }
 
-export function setSessionAs2FAVerified(sessionId: string): void {
-  db.update(sessions)
+export async function setSessionAs2FAVerified(
+  sessionId: string
+): Promise<void> {
+  await db
+    .update(sessions)
     .set({ twoFactorVerified: true })
     .where(eq(sessions.id, sessionId))
 }
@@ -126,4 +143,5 @@ export type SessionValidationResult =
 
 export interface SessionFlags {
   twoFactorVerified: boolean
+  oAuth2Verified: boolean
 }

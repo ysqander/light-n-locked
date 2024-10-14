@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Trash2, Loader2 } from 'lucide-react'
 import { startTransition, useActionState } from 'react'
-import { deleteAccount, requestPasswordReset } from '@/app/(login)/actions'
+import { deleteAccount } from '@/app/(login)/actions'
+import { forgotPasswordAction } from '@/app/forgot-password/actions'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -27,7 +28,7 @@ export default function SecurityClientComponent({
   const [resetState, resetAction, isResetPending] = useActionState<
     ActionState,
     FormData
-  >(requestPasswordReset, { error: '', success: '' })
+  >(forgotPasswordAction, { error: '', success: '' })
 
   const [deleteState, deleteAction, isDeletePending] = useActionState<
     ActionState,
@@ -42,6 +43,12 @@ export default function SecurityClientComponent({
       resetAction(new FormData(event.currentTarget))
     })
   }
+
+  useEffect(() => {
+    if (resetState.success) {
+      router.push('/reset-password/verify-email')
+    }
+  }, [resetState.success, router])
 
   const handleDeleteSubmit = async (
     event: React.FormEvent<HTMLFormElement>
@@ -68,11 +75,8 @@ export default function SecurityClientComponent({
         <CardContent>
           <form className="space-y-4" onSubmit={handleResetSubmit}>
             <div>
-              <Label htmlFor="reset-password">Email Address</Label>
-              <p>
-                Enter the email you signed up with to receive a password reset
-                link
-              </p>
+              <Label htmlFor="reset-password">Enter Your Email Address</Label>
+              <p>Enter your email address to receive a password reset code</p>
               <Input
                 id="reset-password"
                 name="email"
@@ -81,6 +85,7 @@ export default function SecurityClientComponent({
                 required
                 minLength={3}
                 maxLength={255}
+                placeholder="your@email.com"
               />
             </div>
             {resetState.error && (
@@ -100,7 +105,7 @@ export default function SecurityClientComponent({
                   Sending...
                 </>
               ) : (
-                'Send Reset Link'
+                'Send Reset Code'
               )}
             </Button>
           </form>
