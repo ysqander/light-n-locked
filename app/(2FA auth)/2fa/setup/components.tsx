@@ -20,10 +20,6 @@ type ActionState = {
 }
 
 export function TwoFactorSetUpForm(props: { encodedTOTPKey: string }) {
-  console.log('DEBUG: TwoFactorSetUpForm rendered', {
-    encodedTOTPKey: props.encodedTOTPKey,
-  })
-
   const [actionState, formAction, pending] = useActionState<
     ActionState,
     FormData

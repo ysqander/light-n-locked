@@ -9,8 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2 } from 'lucide-react'
-
+import { useState } from 'react'
 const initialPasswordResetTOTPState = {
   message: '',
 }
@@ -100,5 +99,50 @@ export function PasswordResetRecoveryCodeForm() {
         </form>
       </CardContent>
     </Card>
+  )
+}
+
+export default function RecoveryCodeToggle() {
+  const [showRecoveryCode, setShowRecoveryCode] = useState(false)
+
+  return (
+    <>
+      <button
+        onClick={() => setShowRecoveryCode(!showRecoveryCode)}
+        className="mt-4 text-sm text-primary hover:underline"
+      >
+        {showRecoveryCode
+          ? 'Hide recovery code option'
+          : 'Use recovery code instead'}
+      </button>
+
+      {showRecoveryCode && (
+        <>
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-background text-muted-foreground">
+                Or
+              </span>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Use Recovery Code</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">
+                If you can't access your authenticator app, you can use the
+                recovery code generated on signup instead.
+              </p>
+              <PasswordResetRecoveryCodeForm />
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </>
   )
 }

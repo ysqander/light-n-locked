@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Manrope } from 'next/font/google'
 import { UserProvider } from '@/lib/auth'
-import { getCurrentSession } from '@/lib/auth/diy'
+import { getCurrentSession, getCurrentSessionLimitedUser } from '@/lib/auth/diy'
 
 export const metadata: Metadata = {
   title: 'Next.js SaaS Starter',
@@ -20,7 +20,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const userPromise = getCurrentSession()
+  const userPromise = getCurrentSessionLimitedUser()
   return (
     <html
       lang="en"

@@ -11,24 +11,12 @@ import {
 } from 'drizzle-orm/pg-core'
 import { relations, sql } from 'drizzle-orm'
 
-// Custom type for bytea
-export const bytea = customType<{ data: Buffer | null }>({
-  dataType() {
-    return 'bytea'
-  },
-  toDriver(value: Buffer | null): Buffer | null {
-    return value
-  },
-  fromDriver(value: unknown): Buffer | null {
-    if (value instanceof Buffer) {
-      return value
-    }
-    if (value === null) {
-      return null
-    }
-    throw new Error('Invalid bytea value')
-  },
-})
+//Type definition for the user object on the client side
+export type LimitedUser = {
+  id: number
+  name: string | null
+  role: string
+}
 
 export const users = pgTable(
   'users',

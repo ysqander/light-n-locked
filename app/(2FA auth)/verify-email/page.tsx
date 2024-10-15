@@ -36,10 +36,10 @@ export default async function Page() {
         <div className="flex flex-col items-center space-y-4">
           <ResendEmailVerificationCodeForm />
           <Link
-            href="/settings"
+            href="/sign-up"
             className="text-sm text-orange-600 hover:text-orange-500 transition-colors"
           >
-            Change your email
+            Change your email (return to sign up)
           </Link>
         </div>
       </div>

@@ -11,13 +11,14 @@ import { forgotPasswordAction } from '@/app/(2FA auth)/forgot-password/actions'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { User } from '@/lib/db/schema'
 
 type ActionState = {
   error?: string
   success?: string
 }
 
-export default function SecurityClientComponent() {
+export default function SecurityClientComponent({ user }: { user: User }) {
   const [resetState, resetAction, isResetPending] = useActionState<
     ActionState,
     FormData
@@ -60,50 +61,52 @@ export default function SecurityClientComponent() {
 
   return (
     <>
-      {/* Request Password Reset Section */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Request Password Reset</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handleResetSubmit}>
-            <div>
-              <Label htmlFor="reset-password">Enter Your Email Address</Label>
-              <p>Enter your email address to receive a password reset code</p>
-              <Input
-                id="reset-password"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                minLength={3}
-                maxLength={255}
-                placeholder="your@email.com"
-              />
-            </div>
-            {resetState.error && (
-              <p className="text-red-500 text-sm">{resetState.error}</p>
-            )}
-            {resetState.success && (
-              <p className="text-green-500 text-sm">{resetState.success}</p>
-            )}
-            <Button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-              disabled={isResetPending}
-            >
-              {isResetPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                'Send Reset Code'
+      {/* Request Password Reset Section. Only shown to users signed up with email */}
+      {user.emailVerified && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Request Password Reset</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-4" onSubmit={handleResetSubmit}>
+              <div>
+                <Label htmlFor="reset-password">Enter Your Email Address</Label>
+                <p>Enter your email address to receive a password reset code</p>
+                <Input
+                  id="reset-password"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  minLength={3}
+                  maxLength={255}
+                  placeholder="your@email.com"
+                />
+              </div>
+              {resetState.error && (
+                <p className="text-red-500 text-sm">{resetState.error}</p>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              {resetState.success && (
+                <p className="text-green-500 text-sm">{resetState.success}</p>
+              )}
+              <Button
+                type="submit"
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+                disabled={isResetPending}
+              >
+                {isResetPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Code'
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Delete Account Section */}
       <Card>

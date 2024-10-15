@@ -20,12 +20,6 @@ function Header() {
   const { user, setUser } = useUser()
   const router = useRouter()
 
-  // async function handleSignOut() {
-  //   setUser(null)
-  //   await signOut()
-  //   router.push('/')
-  // }
-
   async function handleSignOut() {
     const result = await signOut()
     if (result.success) {
@@ -81,12 +75,20 @@ function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button
-              asChild
-              className="bg-black hover:bg-gray-800 text-white text-sm px-4 py-2 rounded-full"
-            >
-              <Link href="/sign-up">Sign Up</Link>
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Button
+                asChild
+                className="text-sm text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 rounded-full"
+              >
+                <Link href="/sign-in">Log In</Link>
+              </Button>
+              <Button
+                asChild
+                className="text-sm text-white bg-black hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white-500 rounded-full"
+              >
+                <Link href="/sign-up">Sign Up</Link>
+              </Button>
+            </div>
           )}
         </div>
       </div>

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CircleIcon, Loader2 } from 'lucide-react'
 import { SiGithub } from '@icons-pack/react-simple-icons'
+import { InfoIcon } from 'lucide-react'
 
 import { signIn, signUp } from './actions'
 import { githubSignIn } from './github-actions'
@@ -66,9 +67,18 @@ export function LoginComponent({
             ? 'Sign in to your account'
             : 'Create your account'}
         </h2>
+        {mode === 'signup' && (
+          <p className="text-sm text-gray-600 text-center mt-6 flex items-start justify-center">
+            <InfoIcon className="h-8 w-8 mr-2 text-orange-500 flex-shrink-0" />
+            <span className="text-left">
+              Email sign-up requires setting up 2fa with a 3rd party
+              authentification app
+            </span>
+          </p>
+        )}
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-4 sm:mx-auto sm:w-full sm:max-w-md">
         {inviteId && (
           <p className="mb-4 text-sm text-gray-600 text-center">
             You've been invited to join a team. Please sign in or create an

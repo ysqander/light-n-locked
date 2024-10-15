@@ -7,6 +7,14 @@ CREATE TABLE IF NOT EXISTS "activity_logs" (
 	"ip_address" varchar(45)
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "email_verification_requests" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"code" text NOT NULL,
+	"email" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "invitations" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"team_id" integer NOT NULL,
@@ -15,6 +23,31 @@ CREATE TABLE IF NOT EXISTS "invitations" (
 	"invited_by" integer NOT NULL,
 	"invited_at" timestamp DEFAULT now() NOT NULL,
 	"status" varchar(20) DEFAULT 'pending' NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "password_reset_sessions" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"email" text NOT NULL,
+	"code" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"two_factor_verified" boolean DEFAULT false NOT NULL,
+	"email_verified" boolean DEFAULT false NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
+	"token_hash" text NOT NULL,
+	"user_id" integer NOT NULL,
+	"expires_at" timestamp NOT NULL,
+	CONSTRAINT "password_reset_tokens_token_hash_unique" UNIQUE("token_hash")
+);
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "sessions" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"two_factor_verified" boolean DEFAULT false NOT NULL,
+	"o_auth2_verified" boolean DEFAULT false NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "team_members" (
@@ -42,13 +75,21 @@ CREATE TABLE IF NOT EXISTS "teams" (
 CREATE TABLE IF NOT EXISTS "users" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(100),
-	"email" varchar(255) NOT NULL,
-	"password_hash" text NOT NULL,
+	"email" varchar(255),
+	"email_verified" boolean DEFAULT false NOT NULL,
+	"totp_key" text,
+	"registered_2fa" boolean DEFAULT false NOT NULL,
+	"recovery_code" text NOT NULL,
+	"password_hash" text,
+	"github_id" integer,
+	"github_username" text,
 	"role" varchar(20) DEFAULT 'member' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
+	"deletion_method" varchar(20),
+	CONSTRAINT "users_email_unique" UNIQUE("email"),
+	CONSTRAINT "users_github_id_unique" UNIQUE("github_id")
 );
 --> statement-breakpoint
 DO $$ BEGIN
@@ -59,6 +100,12 @@ END $$;
 --> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "email_verification_requests" ADD CONSTRAINT "email_verification_requests_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
@@ -76,6 +123,24 @@ EXCEPTION
 END $$;
 --> statement-breakpoint
 DO $$ BEGIN
+ ALTER TABLE "password_reset_sessions" ADD CONSTRAINT "password_reset_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
  ALTER TABLE "team_members" ADD CONSTRAINT "team_members_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
 EXCEPTION
  WHEN duplicate_object THEN null;
@@ -86,3 +151,5 @@ DO $$ BEGIN
 EXCEPTION
  WHEN duplicate_object THEN null;
 END $$;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "email_idx" ON "users" USING btree ("email");

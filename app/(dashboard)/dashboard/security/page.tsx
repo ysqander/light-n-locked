@@ -4,7 +4,6 @@ import { getCurrentSession } from '@/lib/auth/diy'
 
 export default async function SecurityPage() {
   const { user } = await getCurrentSession()
-
   if (!user) {
     redirect('/sign-in')
   }

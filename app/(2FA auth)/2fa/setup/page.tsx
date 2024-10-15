@@ -8,17 +8,11 @@ import { globalGETRateLimit } from '@/lib/server/request'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export default async function Page() {
-  console.log('DEBUG: Starting Page component')
-
   if (!globalGETRateLimit()) {
     return 'Too many requests'
   }
 
   const { session, user } = await getCurrentSession()
-  console.log('DEBUG: Session and user fetched', {
-    session: !!session,
-    user: !!user,
-  })
 
   if (session === null) {
     return redirect('/sign-in')
@@ -33,15 +27,11 @@ export default async function Page() {
   const totpKey = new Uint8Array(20)
   crypto.getRandomValues(totpKey)
   const encodedTOTPKey = encodeBase64(totpKey)
-  console.log('DEBUG: TOTP key generated and encoded', { encodedTOTPKey })
 
   const keyURI = createTOTPKeyURI('Demo', user.email, totpKey, 30, 6)
-  console.log('DEBUG: Key URI created', { keyURI })
 
   const qrcode = renderSVG(keyURI)
-  console.log('DEBUG: QR code rendered')
 
-  console.log('DEBUG: Rendering component')
   return (
     <div className="min-h-[100dvh] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">

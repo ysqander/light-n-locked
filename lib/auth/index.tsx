@@ -8,12 +8,12 @@ import {
   useEffect,
 } from 'react'
 import { use } from 'react'
-import { User } from '@/lib/db/schema'
-import { SessionValidationResult } from '@/lib/auth/diy'
+import { LimitedUser } from '@/lib/db/schema'
+import { SessionValidationResultLimitedUser } from '@/lib/auth/diy'
 
 type UserContextType = {
-  user: User | null
-  setUser: (user: User | null) => void
+  user: LimitedUser | null
+  setUser: (user: LimitedUser | null) => void
 }
 
 const UserContext = createContext<UserContextType | null>(null)
@@ -31,10 +31,10 @@ export function UserProvider({
   userPromise,
 }: {
   children: ReactNode
-  userPromise: Promise<SessionValidationResult>
+  userPromise: Promise<SessionValidationResultLimitedUser>
 }) {
   let { user: initialUser } = use(userPromise)
-  let [user, setUser] = useState<User | null>(initialUser)
+  let [user, setUser] = useState<LimitedUser | null>(initialUser)
 
   useEffect(() => {
     setUser(initialUser)

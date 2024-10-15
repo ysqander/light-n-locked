@@ -1,6 +1,7 @@
 import { sha256 } from '@oslojs/crypto/sha2'
 import {
   User,
+  LimitedUser,
   Session,
   sessions,
   users,
@@ -95,6 +96,31 @@ export const getCurrentSession = cache(
   }
 )
 
+//Function to get the current session with a limited user object on the clinet side (app/Layout and auth/index)
+export const getCurrentSessionLimitedUser = cache(
+  async (): Promise<SessionValidationResultLimitedUser> => {
+    const token = cookies().get('session')?.value ?? null
+    if (token === null) {
+      return {
+        session: null,
+        user: null,
+      }
+    }
+    const result = await validateSessionToken(token)
+    if (result.user) {
+      return {
+        session: result.session,
+        user: {
+          id: result.user.id,
+          name: result.user.name,
+          role: result.user.role,
+        },
+      }
+    }
+    return result
+  }
+)
+
 export async function invalidateSession(sessionId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, sessionId))
 }
@@ -139,6 +165,10 @@ export const github = new GitHub(
 
 export type SessionValidationResult =
   | { session: Session; user: User }
+  | { session: null; user: null }
+
+export type SessionValidationResultLimitedUser =
+  | { session: Session; user: LimitedUser }
   | { session: null; user: null }
 
 export interface SessionFlags {

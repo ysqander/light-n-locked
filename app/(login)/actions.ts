@@ -1,38 +1,21 @@
 'use server'
 
 import { z } from 'zod'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/lib/db/drizzle'
 import {
-  User,
   users,
-  teams,
   teamMembers,
-  activityLogs,
-  passwordResetTokens,
   type NewUser,
-  type NewTeam,
-  type NewTeamMember,
-  type NewActivityLog,
   ActivityType,
   invitations,
 } from '@/lib/db/schema'
-import {
-  comparePasswords,
-  hashPassword,
-  hashPasswordArgon2,
-  setSession,
-} from '@/lib/auth/session'
+import { hashPasswordArgon2 } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
 import { createCheckoutSession } from '@/lib/payments/stripe'
 import { validatedAction, validatedActionWithUser } from '@/lib/auth/middleware'
 import { verify } from '@node-rs/argon2'
-import { TimeSpan, createDate } from 'oslo'
-import { sha256 } from 'oslo/crypto'
-import { encodeHex } from 'oslo/encoding'
-import { isWithinExpirationDate } from '@/lib/utils/dateUtils' // Ensure this import is present
-import { Resend } from 'resend'
 import { createUserAndTeam, getUserWithTeam } from '@/lib/db/data-access/users'
 import { logActivity } from '@/lib/db/data-access/activity'
 import { getUserWithTeamByEmail } from '@/lib/db/data-access/users'
@@ -47,7 +30,7 @@ import {
   getCurrentSession,
 } from '@/lib/auth/diy'
 import { globalPOSTRateLimit } from '@/lib/server/request'
-import { verifyEmailInput, checkEmailAvailability } from '@/lib/server/email'
+import { checkEmailAvailability } from '@/lib/server/email'
 import { verifyPasswordStrength } from '@/lib/server/password'
 import { resend } from '@/lib/utils/resend'
 import {
@@ -58,7 +41,7 @@ import {
 import { SessionFlags } from '@/lib/auth/diy'
 import { RefillingTokenBucket, Throttler } from '@/lib/server/rate-limit'
 import { generateRandomRecoveryCode } from '@/lib/utils/codeGen'
-import { encrypt, decrypt } from '@/lib/server/encryption'
+import { encrypt } from '@/lib/server/encryption'
 import { createPasswordResetSession } from '@/lib/server/password-reset'
 import { getUserByEmail } from '@/lib/db/data-access/users'
 import { sendPasswordResetEmail } from '@/lib/server/password-reset'
@@ -121,7 +104,6 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     } else {
       throttler.reset(foundUser.id)
       await Promise.all([
-        //setSession(foundUser),
         logActivity(foundTeam?.id, foundUser.id, ActivityType.SIGN_IN),
       ])
 
@@ -250,7 +232,6 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     )
     setSessionTokenCookie(sessionToken, session.expiresAt)
 
-    // TO DO adjust checkout in new email + password flow
     const redirectTo = formData.get('redirect') as string | null
     if (redirectTo === 'checkout') {
       const priceId = formData.get('priceId') as string
