@@ -2,7 +2,7 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import { Manrope } from 'next/font/google'
 import { UserProvider } from '@/lib/auth'
-import { getCurrentSession, getCurrentSessionLimitedUser } from '@/lib/auth/diy'
+import { getCurrentSessionLimitedUser } from '@/lib/auth/diy'
 
 export const metadata: Metadata = {
   title: 'Next.js SaaS Starter',

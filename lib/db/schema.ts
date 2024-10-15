@@ -15,6 +15,7 @@ import { relations, sql } from 'drizzle-orm'
 export type LimitedUser = {
   id: number
   name: string | null
+  emailVerified: boolean
   role: string
 }
 

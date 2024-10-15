@@ -11,14 +11,15 @@ import { forgotPasswordAction } from '@/app/(2FA auth)/forgot-password/actions'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import { User } from '@/lib/db/schema'
+import { useUser } from '@/lib/auth'
 
 type ActionState = {
   error?: string
   success?: string
 }
 
-export default function SecurityClientComponent({ user }: { user: User }) {
+export default function SecurityClientComponent() {
+  const { user } = useUser()
   const [resetState, resetAction, isResetPending] = useActionState<
     ActionState,
     FormData
@@ -62,7 +63,7 @@ export default function SecurityClientComponent({ user }: { user: User }) {
   return (
     <>
       {/* Request Password Reset Section. Only shown to users signed up with email */}
-      {user.emailVerified && (
+      {user?.emailVerified && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>Request Password Reset</CardTitle>

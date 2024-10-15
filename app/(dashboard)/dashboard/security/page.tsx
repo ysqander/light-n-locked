@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import SecurityClientComponent from './securtiyClientComponent'
+import SecurityClientComponent from './securityClientComponent'
 import { getCurrentSession } from '@/lib/auth/diy'
 
 export default async function SecurityPage() {
@@ -13,7 +13,7 @@ export default async function SecurityPage() {
       <h1 className="text-lg lg:text-2xl font-medium bold text-gray-900 mb-6">
         Security Settings
       </h1>
-      <SecurityClientComponent user={user} />
+      <SecurityClientComponent />
     </section>
   )
 }

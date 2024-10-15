@@ -113,6 +113,7 @@ export const getCurrentSessionLimitedUser = cache(
         user: {
           id: result.user.id,
           name: result.user.name,
+          emailVerified: result.user.emailVerified,
           role: result.user.role,
         },
       }
