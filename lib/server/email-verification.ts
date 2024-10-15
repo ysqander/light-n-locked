@@ -6,7 +6,7 @@ import { cookies } from 'next/headers'
 import { getCurrentSession } from '@/lib/auth/diy'
 import { emailVerificationRequests } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
-import { resend } from '@/lib/utils/resend'
+import { emailDomain, resend } from '@/lib/utils/resend'
 import { ConfirmationEmail } from '@/components/ConfirmationEmail'
 
 export async function getUserEmailVerificationRequest(
@@ -87,7 +87,7 @@ export async function sendVerificationEmail(
     const userName = email.split('@')[0] // Simple way to get a username, you might want to adjust this
 
     await resend.emails.send({
-      from: 'Verification <noreply@nexusscholar.org>',
+      from: `Verification <noreply@${emailDomain}>`,
       to: email,
       subject: 'Verify your email address',
       react: ConfirmationEmail({
@@ -95,8 +95,6 @@ export async function sendVerificationEmail(
         userName,
       }) as React.ReactElement,
     })
-
-    console.log(`Verification email sent to ${email}`)
   } catch (error) {
     console.error('Error sending verification email:', error)
     throw new Error('Failed to send verification email')

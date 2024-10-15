@@ -5,7 +5,7 @@ import { sha256 } from '@oslojs/crypto/sha2'
 import { cookies } from 'next/headers'
 import { passwordResetSessions, usersWithDerived, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
-import { resend } from '@/lib/utils/resend'
+import { emailDomain, resend } from '@/lib/utils/resend'
 import { PasswordResetEmail } from '@/components/PasswordResetEmail'
 import type { User } from '@/lib/db/schema'
 
@@ -147,7 +147,7 @@ export async function sendPasswordResetEmail(email: string, code: string) {
     const userName = email.split('@')[0] // Simple way to get a username
 
     await resend.emails.send({
-      from: 'Password Reset <noreply@nexusscholar.org>',
+      from: `Password Reset <noreply@${emailDomain}>`,
       to: email,
       subject: 'Reset your password',
       react: PasswordResetEmail({

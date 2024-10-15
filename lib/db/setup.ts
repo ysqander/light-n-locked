@@ -191,6 +191,18 @@ async function writeEnvFile(envVars: Record<string, string>) {
   console.log('.env file created with the necessary variables.')
 }
 
+async function generateEncryptionKey(): Promise<string> {
+  console.log('Generating ENCRYPTION_KEY...')
+  try {
+    const { stdout } = await execAsync('openssl rand --base64 16')
+    return stdout.trim()
+  } catch (error) {
+    console.error('Failed to generate ENCRYPTION_KEY using OpenSSL.')
+    console.log('Falling back to crypto module for key generation.')
+    return crypto.randomBytes(16).toString('base64')
+  }
+}
+
 async function main() {
   await checkStripeCLI()
 
@@ -199,6 +211,10 @@ async function main() {
   const STRIPE_WEBHOOK_SECRET = await createStripeWebhook()
   const BASE_URL = 'http://localhost:3000'
   const AUTH_SECRET = generateAuthSecret()
+  const GITHUB_CLIENT_ID = 'fill-in-your-client-id'
+  const GITHUB_CLIENT_SECRET = 'fill-in-your-client-secret'
+  const RESEND_API_KEY = 'fill-in-your-resend-api-key'
+  const ENCRYPTION_KEY = await generateEncryptionKey()
 
   await writeEnvFile({
     POSTGRES_URL,
@@ -206,6 +222,10 @@ async function main() {
     STRIPE_WEBHOOK_SECRET,
     BASE_URL,
     AUTH_SECRET,
+    GITHUB_CLIENT_ID,
+    GITHUB_CLIENT_SECRET,
+    RESEND_API_KEY,
+    ENCRYPTION_KEY,
   })
 
   console.log('🎉 Setup completed successfully!')

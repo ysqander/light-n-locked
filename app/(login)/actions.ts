@@ -32,7 +32,7 @@ import {
 import { globalPOSTRateLimit } from '@/lib/server/request'
 import { checkEmailAvailability } from '@/lib/server/email'
 import { verifyPasswordStrength } from '@/lib/server/password'
-import { resend } from '@/lib/utils/resend'
+import { resend, emailDomain } from '@/lib/utils/resend'
 import {
   createEmailVerificationRequest,
   sendVerificationEmail,
@@ -261,17 +261,6 @@ export async function signOut() {
   return { success: true }
 }
 
-const updatePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(8).max(100),
-    newPassword: z.string().min(8).max(100),
-    confirmPassword: z.string().min(8).max(100),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  })
-
 const deleteAccountSchema = z.object({
   confirmText: z.string().refine((value) => value === 'CONFIRM DELETE', {
     message: "Please type 'CONFIRM DELETE' to proceed",
@@ -480,7 +469,7 @@ export const inviteTeamMember = validatedActionWithUser(
 
     try {
       await resend.emails.send({
-        from: 'noreply@nexusscholar.org',
+        from: `noreply@${emailDomain}`,
         to: email,
         subject: `You've been invited to join ${userWithTeam.teamName}`,
         react: InvitationEmail({

@@ -1,35 +1,13 @@
 # Next.js SaaS Starter
 
-This is a starter template for building a SaaS application using **Next.js** with support for authentication, Stripe integration for payments, and a dashboard for logged-in users.
+This a lightweight saas template with github oauth, email/password 2fa, postgres and stripe.
 
-**Demo: [https://next-saas-start.vercel.app/](https://next-saas-start.vercel.app/)**
+This combines the works of two excellent contributors to the dev community:
 
-<details>
-  <summary>Why did I make this?</summary>
-  
-  In 2020, I made a course called "React 2025" which showed how to build a SaaS application with Next.js, Stripe, and other tools.
+- Lee robinson: who built the original [Next.js SaaS Starter](https://github.com/leerob/next-saas-starter)
+- Pilcrow: the author of the Lucia auth library and great learning materials on rolling your own auth. https://lucia-next.pages.dev/
 
-Well, it's almost 2025 and React 19 has brought so many amazing new features I didn't predict! This repo is a demonstration of the latest React and Next.js patterns. These patterns can drastically simplify some common tasks in building your SaaS, like building forms, talking to your database, and more.
-
-For example, React now has built in hooks like `useActionState` to handle inline form errors and pending states. React Server Actions can replace a lot of boilerplate code needed to call an API Route from the client-side. And finally, the React `use` hook combined with Next.js makes it incredibly easy to build a powerful `useUser()` hook.
-
-We're able to fetch the user from our Postgres database in the root layout, but _not_ await the `Promise`. Instead, we forward the `Promise` to a React context provider, where we can "unwrap" it and awaited the streamed in data. This means we can have the best of both worlds: easy code to fetch data from our database (e.g. `getUser()`) and a React hook we can use in Client Components (e.g. `useUser()`).
-
-Fun fact: the majority of the UI for this application was built with [v0](https://v0.dev) 🤯 [More details here](https://x.com/leeerob/status/1835777934361084316) if you want to learn about this repo.
-
-</details>
-
-## Features
-
-- Marketing landing page (`/`) with animated Terminal element
-- Pricing page (`/pricing`) which connects to Stripe Checkout
-- Dashboard pages with CRUD operations on users/teams
-- Basic RBAC with Owner and Member roles
-- Subscription management with Stripe Customer Portal
-- Email/password authentication with JWTs stored to cookies
-- Global middleware to protect logged-in routes
-- Local middleware to protect Server Actions or validate Zod schemas
-- Activity logging system for any user events
+This tempalte take the original template by Robinspn and replaces JWT token auth with session auth.
 
 ## Tech Stack
 
@@ -38,12 +16,14 @@ Fun fact: the majority of the UI for this application was built with [v0](https:
 - **ORM**: [Drizzle](https://orm.drizzle.team/)
 - **Payments**: [Stripe](https://stripe.com/)
 - **UI Library**: [shadcn/ui](https://ui.shadcn.com/)
+- **Email**: [Resend](https://resend.com/)
+- **Authentication**: Roll your own
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/leerob/next-saas-starter
-cd next-saas-starter
+git clone https://github.com/ysqander/light-n-locked
+cd light-n-locked
 pnpm install
 ```
 
@@ -55,21 +35,22 @@ Use the included setup script to create your `.env` file:
 pnpm db:setup
 ```
 
-Then, run the database migrations and seed the database with a default user and team:
+Then, run the database migrations:
 
 ```bash
 pnpm db:migrate
-pnpm db:seed
+pnpm db:push
 ```
 
-This will create the following user and team:
+To use github oauth and Resend email you need to creae API keys for each service and set the following environment variables i nthe .env file:
 
-- User: `test@test.com`
-- Password: `admin123`
+```bash
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+RESEND_API_KEY=
+```
 
-You can, of course, create new users as well through `/sign-up`.
-
-Finally, run the Next.js development server:
+To start the dev server run:
 
 ```bash
 pnpm dev
