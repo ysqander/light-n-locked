@@ -4,10 +4,10 @@ This a lightweight saas template with github oauth, email/password 2fa, postgres
 
 This combines the works of two excellent contributors to the dev community:
 
-- Lee robinson: who built the original [Next.js SaaS Starter](https://github.com/leerob/next-saas-starter)
+- Lee Robinson: who built the original template on which this one is based [Next.js SaaS Starter](https://github.com/leerob/next-saas-starter)
 - Pilcrow: the author of the Lucia auth library and great learning materials on rolling your own auth. https://lucia-next.pages.dev/
 
-This tempalte take the original template by Robinspn and replaces JWT token auth with session auth.
+This tempalte take the original template by Robinson and replaces JWT tokens auth with session auth and adds 2fa for email/password auth.
 
 ## Tech Stack
 

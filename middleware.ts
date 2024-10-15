@@ -1,7 +1,5 @@
 // middleware.ts
-import { TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST } from 'next/dist/shared/lib/constants'
 import { NextResponse } from 'next/server'
-
 import type { NextRequest } from 'next/server'
 
 export const SESSION_EXPIRY_DAYS_test = 10
