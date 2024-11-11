@@ -18,8 +18,9 @@ export async function githubSignIn(
   const url = await github.createAuthorizationURL(stateWithInfo, {
     scopes: ['user:email'],
   })
+  const cookieStore = await cookies()
 
-  cookies().set('github_oauth_state', stateWithInfo, {
+  cookieStore.set('github_oauth_state', stateWithInfo, {
     path: '/',
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,

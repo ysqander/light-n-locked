@@ -2,7 +2,7 @@ import { db } from '@/lib/db/drizzle'
 import { encodeHexLowerCase } from '@oslojs/encoding'
 import { generateRandomOTP } from '@/lib/utils/codeGen'
 import { sha256 } from '@oslojs/crypto/sha2'
-import { cookies } from 'next/headers'
+import { cookies, type UnsafeUnwrappedCookies } from 'next/headers';
 import { passwordResetSessions, usersWithDerived, users } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { emailDomain, resend } from '@/lib/utils/resend'
@@ -108,7 +108,7 @@ export async function invalidateUserPasswordResetSessions(
 }
 
 export async function validatePasswordResetSessionRequest(): Promise<PasswordResetSessionValidationResult> {
-  const token = cookies().get('password_reset_session')?.value ?? null
+  const token = (await cookies()).get('password_reset_session')?.value ?? null
   if (token === null) {
     return { session: null, user: null }
   }
@@ -123,7 +123,7 @@ export function setPasswordResetSessionTokenCookie(
   token: string,
   expiresAt: Date
 ): void {
-  cookies().set('password_reset_session', token, {
+  (cookies() as unknown as UnsafeUnwrappedCookies).set('password_reset_session', token, {
     expires: expiresAt,
     sameSite: 'lax',
     httpOnly: true,
@@ -133,7 +133,7 @@ export function setPasswordResetSessionTokenCookie(
 }
 
 export function deletePasswordResetSessionTokenCookie(): void {
-  cookies().set('password_reset_session', '', {
+  (cookies() as unknown as UnsafeUnwrappedCookies).set('password_reset_session', '', {
     maxAge: 0,
     sameSite: 'lax',
     httpOnly: true,

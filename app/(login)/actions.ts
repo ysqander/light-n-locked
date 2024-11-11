@@ -60,7 +60,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   }
 
   // TODO: Assumes X-Forwarded-For is always included.
-  const clientIP = headers().get('X-Forwarded-For')
+  const clientIP = (await headers()).get('X-Forwarded-For')
   if (clientIP !== null && !ipBucket.check(clientIP, 1)) {
     return {
       message: 'Too many requests',

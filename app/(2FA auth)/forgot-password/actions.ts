@@ -30,7 +30,7 @@ export const forgotPasswordAction = validatedAction(
       }
     }
     // TODO: Assumes X-Forwarded-For is always included.
-    const clientIP = headers().get('X-Forwarded-For')
+    const clientIP = (await headers()).get('X-Forwarded-For')
     if (clientIP !== null && !passwordResetEmailIPBucket.check(clientIP, 1)) {
       return {
         message: 'Too many requests',

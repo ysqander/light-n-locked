@@ -21,10 +21,11 @@ export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url)
   const code = url.searchParams.get('code')
   const state = url.searchParams.get('state')
-  const storedState = cookies().get('github_oauth_state')?.value ?? null
+  const cookieStore = await cookies()
+  const storedState = cookieStore.get('github_oauth_state')?.value ?? null
 
   // Clear the github_oauth_state cookie
-  cookies().set('github_oauth_state', '', {
+  cookieStore.set('github_oauth_state', '', {
     maxAge: 0,
     path: '/',
     secure: process.env.NODE_ENV === 'production',

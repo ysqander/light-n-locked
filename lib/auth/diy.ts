@@ -84,7 +84,7 @@ export async function validateSessionToken(
 
 export const getCurrentSession = cache(
   async (): Promise<SessionValidationResult> => {
-    const token = cookies().get('session')?.value ?? null
+    const token = (await cookies()).get('session')?.value ?? null
     if (token === null) {
       return {
         session: null,
@@ -99,7 +99,7 @@ export const getCurrentSession = cache(
 //Function to get the current session with a limited user object on the clinet side (app/Layout and auth/index)
 export const getCurrentSessionLimitedUser = cache(
   async (): Promise<SessionValidationResultLimitedUser> => {
-    const token = cookies().get('session')?.value ?? null
+    const token = (await cookies()).get('session')?.value ?? null
     if (token === null) {
       return {
         session: null,
@@ -139,8 +139,12 @@ export async function setSessionAs2FAVerified(
     .where(eq(sessions.id, sessionId))
 }
 
-export function setSessionTokenCookie(token: string, expiresAt: Date): void {
-  cookies().set('session', token, {
+export async function setSessionTokenCookie(
+  token: string,
+  expiresAt: Date
+): Promise<void> {
+  const cookieStore = await cookies()
+  cookieStore.set('session', token, {
     httpOnly: true,
     path: '/',
     secure: process.env.NODE_ENV === 'production',
@@ -149,8 +153,9 @@ export function setSessionTokenCookie(token: string, expiresAt: Date): void {
   })
 }
 
-export function deleteSessionTokenCookie(): void {
-  cookies().set('session', '', {
+export async function deleteSessionTokenCookie(): Promise<void> {
+  const cookieStore = await cookies()
+  cookieStore.set('session', '', {
     httpOnly: true,
     path: '/',
     secure: process.env.NODE_ENV === 'production',

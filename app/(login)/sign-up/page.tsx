@@ -1,10 +1,11 @@
 import { LoginComponent } from '../login'
 
-export default function SignUpPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined }
-}) {
+export default async function SignUpPage(
+  props: {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+  }
+) {
+  const searchParams = await props.searchParams;
   const inviteId = searchParams.inviteId as string | undefined
 
   // We're not redirecting to sign-up anymore

@@ -27,6 +27,7 @@ yarn-error.log*
 
 # local env files
 .env
+.env.old
 
 # vercel
 .vercel
@@ -38,5 +39,6 @@ next-env.d.ts
 
 # Docker
 postgres_data/
+docker-compose.yml
 
 .cursorrules
